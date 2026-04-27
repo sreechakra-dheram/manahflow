@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io'; // REMOVED: Crashes on Web
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -59,11 +59,17 @@ class AppState extends ChangeNotifier {
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
   Future<void> login() async {
+    // ignore: avoid_print
+    print('DEBUG: AppState.login() CALLED');
     _isLoading = true;
     notifyListeners();
 
     try {
+      // ignore: avoid_print
+      print('DEBUG: Calling _authService.login()...');
       final credentials = await _authService.login();
+      // ignore: avoid_print
+      print('DEBUG: _authService.login() returned: ${credentials != null ? "SUCCESS" : "NULL"}');
       if (credentials != null) {
         final claims = credentials.user.customClaims ?? {};
         final roleStr = _authService.getRole() ?? '(null — fallback)';

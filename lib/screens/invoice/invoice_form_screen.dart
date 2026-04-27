@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -122,16 +122,22 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       case _PickChoice.camera:
         final picked = await ImagePicker()
             .pickImage(source: ImageSource.camera, imageQuality: 80);
-        if (picked != null) _addFile(File(picked.path), 'image/jpeg');
+        if (picked != null) {
+          final bytes = await picked.readAsBytes();
+          _addFile(picked, bytes, 'image/jpeg');
+        }
         break;
       case _PickChoice.gallery:
         final result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: true,
+          withData: true,
         );
         if (result != null) {
           for (final f in result.files) {
-            if (f.path != null) _addFile(File(f.path!), 'image/*');
+            if (f.bytes != null) {
+              _addFile(XFile.fromData(f.bytes!, name: f.name), f.bytes!, 'image/*');
+            }
           }
         }
         break;
@@ -140,18 +146,21 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           type: FileType.custom,
           allowedExtensions: ['pdf'],
           allowMultiple: true,
+          withData: true,
         );
         if (result != null) {
           for (final f in result.files) {
-            if (f.path != null) _addFile(File(f.path!), 'application/pdf');
+            if (f.bytes != null) {
+              _addFile(XFile.fromData(f.bytes!, name: f.name), f.bytes!, 'application/pdf');
+            }
           }
         }
         break;
     }
   }
 
-  void _addFile(File file, String mime) {
-    final size = file.lengthSync();
+  void _addFile(XFile xFile, Uint8List bytes, String mime) {
+    final size = bytes.length;
     if (_totalAttachmentBytes + size > _maxAttachmentBytes) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -161,7 +170,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       );
       return;
     }
-    setState(() => _attachments.add(_Attachment(file: file, mime: mime, bytes: size)));
+    setState(() => _attachments.add(_Attachment(xFile: xFile, bytes: bytes, mime: mime, size: size)));
   }
 
   // ── Submit flow ───────────────────────────────────────────────────────────
@@ -189,7 +198,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       final urls = <String>[];
       for (final att in _attachments) {
         try {
-          final url = await appState.uploadAttachment(att.file);
+          final url = await appState.uploadAttachment(att.xFile);
           if (url != null) urls.add(url);
         } catch (_) {}
       }
@@ -544,14 +553,14 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                 children: [
                                   att.mime.contains('pdf')
                                       ? _PdfThumb(
-                                          file: att.file,
+                                          name: att.xFile.name,
                                           size: 90,
                                         )
                                       : ClipRRect(
                                           borderRadius:
                                               BorderRadius.circular(8),
-                                          child: Image.file(
-                                            att.file,
+                                          child: Image.memory(
+                                            att.bytes,
                                             width: 90,
                                             height: 90,
                                             fit: BoxFit.cover,
@@ -800,16 +809,17 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 enum _PickChoice { camera, gallery, pdf }
 
 class _Attachment {
-  final File file;
+  final XFile xFile;
+  final Uint8List bytes;
   final String mime;
-  final int bytes;
-  _Attachment({required this.file, required this.mime, required this.bytes});
+  final int size;
+  _Attachment({required this.xFile, required this.bytes, required this.mime, required this.size});
 }
 
 class _PdfThumb extends StatelessWidget {
-  final File file;
+  final String name;
   final double size;
-  const _PdfThumb({required this.file, required this.size});
+  const _PdfThumb({required this.name, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -828,7 +838,7 @@ class _PdfThumb extends StatelessWidget {
               color: AppColors.statusRed, size: 28),
           const SizedBox(height: 4),
           Text(
-            file.path.split('/').last.split('\\').last,
+            name,
             style: const TextStyle(
                 fontSize: 9, color: AppColors.textSecondary),
             maxLines: 2,

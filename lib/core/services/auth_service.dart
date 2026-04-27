@@ -15,11 +15,18 @@ class AuthService {
   Credentials? get credentials => _credentials;
 
   Future<Credentials?> login() async {
+    // ignore: avoid_print
+    print('DEBUG: AuthService.login() started');
+    // ignore: avoid_print
+    print('DEBUG: Using Domain: ${dotenv.env['AUTH0_DOMAIN']}');
+    
     try {
       final auth = auth0.webAuthentication(
         scheme: kIsWeb ? null : 'com.example.manahflow',
       );
 
+      // ignore: avoid_print
+      print('DEBUG: Triggering auth.login()...');
       _credentials = await auth.login(
         parameters: {'prompt': 'login'},
         scopes: {'openid', 'profile', 'email', 'offline_access'},

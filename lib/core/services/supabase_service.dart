@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+// import 'dart:io'; // Removed for Web compatibility
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
@@ -39,9 +39,11 @@ class SupabaseService {
     await _client.from(table).update(update).eq('id', id);
   }
 
-  Future<String?> uploadImage(File file, String path) async {
+  Future<String?> uploadImage(dynamic file, String path) async {
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
     final fullPath = '$path/$fileName';
+    
+    // Supabase upload accepts File (mobile) or Uint8List (web)
     await _client.storage.from('attachments').upload(fullPath, file);
     return _client.storage.from('attachments').getPublicUrl(fullPath);
   }
