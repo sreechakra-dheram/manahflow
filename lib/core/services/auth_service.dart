@@ -35,6 +35,8 @@ class AuthService {
       _logger.d('Custom Claims: ${_credentials?.user.customClaims}');
       return _credentials;
     } catch (e) {
+      // ignore: avoid_print
+      print('DEBUG: Auth0 LOGIN EXCEPTION: $e');
       _logger.e('Login failed: $e');
       return null;
     }
