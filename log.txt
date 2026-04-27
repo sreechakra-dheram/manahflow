@@ -1,0 +1,145 @@
+17:08:09.084 Running build in Washington, D.C., USA (East) – iad1
+17:08:09.085 Build machine configuration: 2 cores, 8 GB
+17:08:09.219 Cloning github.com/sreechakra-dheram/manahflow (Branch: master, Commit: ec93c66)
+17:08:09.220 Previous build caches not available.
+17:08:09.443 Cloning completed: 224.000ms
+17:08:09.771 Running "vercel build"
+17:08:10.692 Vercel CLI 51.6.1
+17:08:11.264 Running "install" command: `chmod +x vercel-build.sh`...
+17:08:11.390 Cloning Flutter SDK...
+17:08:11.391 Cloning into 'flutter'...
+17:08:18.431 Updating files:  96% (14744/15358)
+Updating files:  97% (14898/15358)
+Updating files:  98% (15051/15358)
+Updating files:  99% (15205/15358)
+Updating files: 100% (15358/15358)
+Updating files: 100% (15358/15358), done.
+17:08:18.467    Woah! You appear to be trying to run flutter as root.
+17:08:18.467    We strongly recommend running the flutter tool without superuser privileges.
+17:08:18.468   /
+17:08:18.468 📎
+17:08:18.503 Downloading Linux x64 Dart SDK from Flutter engine 59aa584fdf100e6c78c785d8a5b565d1de4b48ab...
+17:08:18.508   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+17:08:18.509                                  Dload  Upload   Total   Spent    Left  Speed
+17:08:19.662 
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+ 84  218M   84  185M    0     0   185M      0  0:00:01  0:00:01 --:--:--  185M
+100  218M  100  218M    0     0   189M      0  0:00:01  0:00:01 --:--:--  189M
+17:08:24.824 Building flutter tool...
+17:08:24.843 Resolving dependencies...
+17:08:25.242 Downloading packages...
+17:08:27.728 Got dependencies.
+17:08:49.140 Analytics reporting disabled.
+17:08:49.141 
+17:08:49.141 You may need to restart any open editors for them to read new settings.
+17:08:49.144 Generating .env file from environment variables...
+17:08:49.145 Building Flutter Web...
+17:08:49.158    Woah! You appear to be trying to run flutter as root.
+17:08:49.159    We strongly recommend running the flutter tool without superuser privileges.
+17:08:49.159   /
+17:08:49.159 📎
+17:08:49.489 Downloading Material fonts...                                      231ms
+17:08:49.546 Downloading Gradle Wrapper...                                        9ms
+17:08:49.667 Downloading package sky_engine...                                  103ms
+17:08:49.740 Downloading package flutter_gpu...                                   8ms
+17:08:49.991 Downloading flutter_patched_sdk tools...                           238ms
+17:08:50.288 Downloading flutter_patched_sdk_product tools...                   205ms
+17:08:51.653 Downloading linux-x64 tools...                                   1,272ms
+17:08:52.367 Downloading linux-x64/font-subset tools...                         112ms
+17:08:53.601 Downloading Web SDK...                                           1,129ms
+17:08:54.357 Resolving dependencies...
+17:08:54.868 Downloading packages...
+17:09:02.697 > characters 1.4.1 (was 1.4.0)
+17:09:02.698   cli_util 0.4.2 (0.5.0 available)
+17:09:02.699   file_picker 8.3.7 (11.0.2 available)
+17:09:02.699   fl_chart 0.69.2 (1.2.0 available)
+17:09:02.699   flutter_lints 4.0.0 (6.0.0 available)
+17:09:02.699   go_router 14.8.1 (17.2.2 available)
+17:09:02.699   google_fonts 6.3.3 (8.0.2 available)
+17:09:02.699   lints 4.0.0 (6.1.0 available)
+17:09:02.700 > matcher 0.12.19 (was 0.12.17)
+17:09:02.700 > material_color_utilities 0.13.0 (was 0.11.1)
+17:09:02.700   meta 1.17.0 (1.18.2 available)
+17:09:02.700   native_toolchain_c 0.17.6 (0.18.0 available)
+17:09:02.700 > test_api 0.7.10 (was 0.7.7) (0.7.11 available)
+17:09:02.701   vector_math 2.2.0 (2.3.0 available)
+17:09:02.701   win32 5.15.0 (6.1.0 available)
+17:09:02.701   xml 6.6.1 (7.0.1 available)
+17:09:02.701 Changed 4 dependencies!
+17:09:02.701 13 packages have newer versions incompatible with dependency constraints.
+17:09:02.702 Try `flutter pub outdated` for more information.
+17:10:23.648 Compiling lib/main.dart for the Web...                          
+17:10:23.651 Wasm dry run findings:
+17:10:23.651 Found incompatibilities with WebAssembly.
+17:10:23.651 
+17:10:23.652 file:///vercel/.pub-cache/hosted/pub.dev/auth0_flutter-2.0.1/lib/src/web/extensions/web_exception_extensions.dart 38:13 - invalid_runtime_check_with_js_interop_types lint violation: Cast from 'JSAny?' to 'String' casts a JS interop value to a Dart type, which might not be platform-consistent. (8)
+17:10:23.652 
+17:10:23.652 Consider addressing these issues to enable wasm builds. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
+17:10:23.652 
+17:10:23.666 Use --no-wasm-dry-run to disable these warnings.
+17:10:23.679 Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+17:10:23.679 lib/core/providers/app_state.dart:357:36:
+17:10:23.680 Error: Type 'File' not found.
+17:10:23.680   Future<String?> uploadAttachment(File file) =>
+17:10:23.680                                    ^^^^
+17:10:23.685 lib/core/providers/app_state.dart:357:36:
+17:10:23.685 Error: 'File' isn't a type.
+17:10:23.689   Future<String?> uploadAttachment(File file) =>
+17:10:23.690                                    ^^^^
+17:10:23.690 lib/screens/invoice/invoice_form_screen.dart:51:44:
+17:10:23.690 Error: A value of type 'Uint8List' can't be assigned to a variable of type 'num'.
+17:10:23.690  - 'Uint8List' is from 'dart:typed_data'.
+17:10:23.690       _attachments.fold(0, (s, a) => s + a.bytes);
+17:10:23.691                                            ^
+17:10:23.691 lib/screens/invoice/invoice_form_screen.dart:51:40:
+17:10:23.691 Error: A value of type 'num' can't be returned from a function with return type 'int'.
+17:10:23.691       _attachments.fold(0, (s, a) => s + a.bytes);
+17:10:23.691                                        ^
+17:10:23.691 Error: Compilation failed.
+17:10:23.692   Command: /vercel/path0/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/vercel/path0/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.41.7 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=cc0734ac71 -DFLUTTER_ENGINE_REVISION=59aa584fdf -DFLUTTER_DART_VERSION=3.11.5 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/59aa584fdf100e6c78c785d8a5b565d1de4b48ab/ --native-null-assertions --no-source-maps -O4 --minify -o /vercel/path0/.dart_tool/flutter_build/ff7b08eba0ddf2353e2da501d110d251/app.dill --packages=/vercel/path0/.dart_tool/package_config.json --cfe-only /vercel/path0/.dart_tool/flutter_build/ff7b08eba0ddf2353e2da501d110d251/main.dart
+17:10:23.695 #0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
+17:10:23.696 #1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
+17:10:23.696 <asynchronous suspension>
+17:10:23.696 #2      Dart2JSTarget.build (package:flutter_tools/src/build_system/targets/web.dart:208:5)
+17:10:23.696 <asynchronous suspension>
+17:10:23.696 #3      _BuildInstance._invokeInternal (package:flutter_tools/src/build_system/build_system.dart:937:9)
+17:10:23.696 <asynchronous suspension>
+17:10:23.697 #4      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+17:10:23.697 <asynchronous suspension>
+17:10:23.697 #5      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:875:32)
+17:10:23.697 <asynchronous suspension>
+17:10:23.697 #6      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+17:10:23.697 <asynchronous suspension>
+17:10:23.697 #7      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:875:32)
+17:10:23.697 <asynchronous suspension>
+17:10:23.698 #8      FlutterBuildSystem.build (package:flutter_tools/src/build_system/build_system.dart:684:16)
+17:10:23.698 <asynchronous suspension>
+17:10:23.698 #9      WebBuilder.buildWeb (package:flutter_tools/src/web/compile.dart:107:34)
+17:10:23.704 <asynchronous suspension>
+17:10:23.705 #10     BuildWebCommand.runCommand (package:flutter_tools/src/commands/build_web.dart:300:5)
+17:10:23.705 <asynchronous suspension>
+17:10:23.705 #11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1590:27)
+17:10:23.705 <asynchronous suspension>
+17:10:23.705 #12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+17:10:23.705 <asynchronous suspension>
+17:10:23.705 #13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+17:10:23.705 <asynchronous suspension>
+17:10:23.706 #14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:496:9)
+17:10:23.706 <asynchronous suspension>
+17:10:23.706 #15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+17:10:23.706 <asynchronous suspension>
+17:10:23.706 #16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+17:10:23.706 <asynchronous suspension>
+17:10:23.706 #17     FlutterCommandRunner.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:307:33)
+17:10:23.706 <asynchronous suspension>
+17:10:23.706 #18     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+17:10:23.707 <asynchronous suspension>
+17:10:23.707 #19     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+17:10:23.707 <asynchronous suspension>
+17:10:23.707 #20     main (package:flutter_tools/executable.dart:103:3)
+17:10:23.707 <asynchronous suspension>
+17:10:23.708 
+17:10:23.708 Compiling lib/main.dart for the Web...                             80.3s
+17:10:23.708 Error: Failed to compile application for the Web.
+17:10:23.724 Error: Command "sh vercel-build.sh" exited with 1

@@ -354,7 +354,7 @@ class AppState extends ChangeNotifier {
     _supabaseService.unsubscribeAll();
   }
 
-  Future<String?> uploadAttachment(File file) =>
+  Future<String?> uploadAttachment(dynamic file) =>
       _supabaseService.uploadImage(file, 'invoices');
 
   String _resolveName(dynamic credentials) {

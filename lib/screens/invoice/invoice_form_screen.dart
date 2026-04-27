@@ -48,7 +48,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   // Attachments — File + mime hint
   final List<_Attachment> _attachments = [];
   int get _totalAttachmentBytes =>
-      _attachments.fold(0, (s, a) => s + a.bytes);
+      _attachments.fold(0, (s, a) => s + a.size);
 
   bool _submitting = false;
   bool _signed = false;
