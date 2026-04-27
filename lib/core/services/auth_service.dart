@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:auth0_flutter/auth0_flutter.dart';
 import 'package:logger/logger.dart';
@@ -15,12 +16,14 @@ class AuthService {
 
   Future<Credentials?> login() async {
     try {
-      _credentials = await auth0
-          .webAuthentication(scheme: 'com.example.manahflow')
-          .login(
-            parameters: {'prompt': 'login'},
-            scopes: {'openid', 'profile', 'email', 'offline_access'},
-          );
+      final auth = auth0.webAuthentication(
+        scheme: kIsWeb ? null : 'com.example.manahflow',
+      );
+
+      _credentials = await auth.login(
+        parameters: {'prompt': 'login'},
+        scopes: {'openid', 'profile', 'email', 'offline_access'},
+      );
       _logger.i('Login successful: ${_credentials?.user.email}');
       _logger.d('Custom Claims: ${_credentials?.user.customClaims}');
       return _credentials;
@@ -32,7 +35,9 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await auth0.webAuthentication(scheme: 'com.example.manahflow').logout();
+      await auth0
+          .webAuthentication(scheme: kIsWeb ? null : 'com.example.manahflow')
+          .logout();
       _credentials = null;
       _logger.i('Logout successful');
     } catch (e) {
