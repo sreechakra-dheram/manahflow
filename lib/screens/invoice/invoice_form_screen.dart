@@ -396,7 +396,10 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                       ),
                       const SizedBox(height: 12),
                       LayoutBuilder(builder: (context, c) {
-                        if (c.maxWidth > 560) {
+                        // On web, the horizontal ScrollView intercepts mouse
+                        // events and prevents text fields from gaining focus.
+                        // Always use the card layout on web.
+                        if (c.maxWidth > 560 && !kIsWeb) {
                           return SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: ConstrainedBox(
