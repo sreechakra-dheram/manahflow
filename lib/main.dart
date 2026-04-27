@@ -6,10 +6,18 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_theme.dart';
 import 'core/providers/app_state.dart';
 import 'core/routes.dart';
+import 'core/services/auth_web_stub.dart'
+    if (dart.library.html) 'core/services/auth_web_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  // Initialize Auth0 for web (calls onLoad to set up the Auth0 JS client)
+  await initAuth0Web(
+    dotenv.env['AUTH0_DOMAIN']!,
+    dotenv.env['AUTH0_CLIENT_ID']!,
+  );
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
