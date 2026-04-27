@@ -26,6 +26,6 @@ fi
 
 # Build the web app — force JS renderer (auth0_flutter is WASM-incompatible)
 echo "Building Flutter Web..."
-flutter build web --release --no-wasm
+flutter build web --release --web-renderer canvaskit
 
 echo "Build complete."
