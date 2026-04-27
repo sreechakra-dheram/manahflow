@@ -24,8 +24,8 @@ if [ ! -f ".env" ]; then
   echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
 fi
 
-# Build the web app
+# Build the web app — force JS renderer (auth0_flutter is WASM-incompatible)
 echo "Building Flutter Web..."
-flutter build web --release
+flutter build web --release --no-wasm
 
 echo "Build complete."
