@@ -33,6 +33,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _bankHolderCtrl = TextEditingController();
   final _bankAccountCtrl = TextEditingController();
   final _bankNameCtrl = TextEditingController();
+  final _bankBranchCtrl = TextEditingController();
   final _bankIfscCtrl = TextEditingController();
 
   String _noteType = _noteTypes.first;
@@ -98,6 +99,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     _bankHolderCtrl.dispose();
     _bankAccountCtrl.dispose();
     _bankNameCtrl.dispose();
+    _bankBranchCtrl.dispose();
     _bankIfscCtrl.dispose();
     for (final row in _items) row.dispose();
     super.dispose();
@@ -217,6 +219,10 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       _snack('Please confirm your declaration to proceed.');
       return;
     }
+    if (_selectedReportId == null) {
+      _snack('Please select an Expense Report.');
+      return;
+    }
 
     // Capture signature
     final sigBytes = await captureSignature(context, title: 'Your Signature');
@@ -230,7 +236,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       final urls = <String>[];
       for (final att in _attachments) {
         try {
-          final url = await appState.uploadAttachment(att.bytes, att.xFile.name);
+          final url = await appState.uploadAttachment(att.bytes, att.xFile.name, mimeType: att.mime);
           if (url != null) urls.add(url);
         } catch (_) {}
       }
@@ -268,7 +274,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         noteType: _noteType,
         bankAccountHolder: _bankHolderCtrl.text.trim(),
         bankAccountNumber: _bankAccountCtrl.text.trim(),
-        bankName: _bankNameCtrl.text.trim(),
+        bankName: [_bankNameCtrl.text.trim(), _bankBranchCtrl.text.trim()].where((s) => s.isNotEmpty).join(', '),
         bankIfsc: _bankIfscCtrl.text.trim(),
         submitterSignatureUrl: sigUrl,
         reportId: _selectedReportId,
@@ -301,12 +307,116 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         backgroundColor: error ? AppColors.statusRed : null,
       ));
 
+  Future<void> _showCreateDialog(String type, Future<void> Function(Map<String, String> data) onCreate) async {
+    final ctrlName = TextEditingController();
+    final ctrlExtra = TextEditingController(); // Mobile number or Description
+    DateTime? startDate;
+    DateTime? endDate;
+    bool loading = false;
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Create New $type', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ctrlName,
+                  decoration: InputDecoration(
+                    labelText: '$type Name',
+                    border: const OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                if (type == 'Vendor') ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: ctrlExtra,
+                    decoration: const InputDecoration(
+                      labelText: 'Mobile Number',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+                if (type == 'Expense Report') ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(context: ctx, initialDate: startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030), initialEntryMode: DatePickerEntryMode.calendarOnly);
+                            if (picked != null) setDialogState(() => startDate = picked);
+                          },
+                          child: Text(startDate == null ? 'Start Date' : _fmtDate(startDate!)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(context: ctx, initialDate: endDate ?? startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030), initialEntryMode: DatePickerEntryMode.calendarOnly);
+                            if (picked != null) setDialogState(() => endDate = picked);
+                          },
+                          child: Text(endDate == null ? 'End Date' : _fmtDate(endDate!)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentBlue, foregroundColor: Colors.white),
+              onPressed: loading ? null : () async {
+                final name = ctrlName.text.trim();
+                if (name.isEmpty) return;
+                
+                final data = {'name': name};
+                if (type == 'Vendor') data['contact'] = ctrlExtra.text.trim();
+                if (type == 'Expense Report') {
+                  if (startDate != null) data['startDate'] = _fmtDate(startDate!);
+                  if (endDate != null) data['endDate'] = _fmtDate(endDate!);
+                }
+
+                setDialogState(() => loading = true);
+                try {
+                  await onCreate(data);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                  setDialogState(() => loading = false);
+                }
+              },
+              child: loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDate(bool isDue) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: isDue ? _dueDate : _date,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (picked != null) setState(() => isDue ? _dueDate = picked : _date = picked);
   }
@@ -389,8 +499,21 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                           _dropdownField<String>(
                             label: 'Project *',
                             value: _selectedProject,
-                            items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
-                            onChanged: (v) => setState(() => _selectedProject = v),
+                            items: [
+                              ..._projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))),
+                              const DropdownMenuItem(value: '__CREATE_NEW__', child: Text('+ Create New Project', style: TextStyle(color: AppColors.accentBlue, fontWeight: FontWeight.bold))),
+                            ],
+                            onChanged: (v) {
+                              if (v == '__CREATE_NEW__') {
+                                _showCreateDialog('Project', (data) async {
+                                  await context.read<AppState>().addProject(data['name']!);
+                                  await _loadMasterData(context.read<AppState>());
+                                  setState(() => _selectedProject = data['name']);
+                                });
+                              } else {
+                                setState(() => _selectedProject = v);
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -409,8 +532,21 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                           _dropdownField<String>(
                             label: 'Vendor / Contractor *',
                             value: _selectedVendor,
-                            items: _vendors.map((v) => DropdownMenuItem(value: v.name, child: Text(v.name))).toList(),
-                            onChanged: (v) => setState(() => _selectedVendor = v),
+                            items: [
+                              ..._vendors.map((v) => DropdownMenuItem(value: v.name, child: Text(v.name))),
+                              const DropdownMenuItem(value: '__CREATE_NEW__', child: Text('+ Create New Vendor', style: TextStyle(color: AppColors.accentBlue, fontWeight: FontWeight.bold))),
+                            ],
+                            onChanged: (v) {
+                              if (v == '__CREATE_NEW__') {
+                                _showCreateDialog('Vendor', (data) async {
+                                  await context.read<AppState>().addVendor(data['name']!, contact: data['contact']);
+                                  await _loadMasterData(context.read<AppState>());
+                                  setState(() => _selectedVendor = data['name']);
+                                });
+                              } else {
+                                setState(() => _selectedVendor = v);
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -418,14 +554,40 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                           _dropdownField<String>(
                             label: 'Project *',
                             value: _selectedProject,
-                            items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
-                            onChanged: (v) => setState(() => _selectedProject = v),
+                            items: [
+                              ..._projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))),
+                              const DropdownMenuItem(value: '__CREATE_NEW__', child: Text('+ Create New Project', style: TextStyle(color: AppColors.accentBlue, fontWeight: FontWeight.bold))),
+                            ],
+                            onChanged: (v) {
+                              if (v == '__CREATE_NEW__') {
+                                _showCreateDialog('Project', (data) async {
+                                  await context.read<AppState>().addProject(data['name']!);
+                                  await _loadMasterData(context.read<AppState>());
+                                  setState(() => _selectedProject = data['name']);
+                                });
+                              } else {
+                                setState(() => _selectedProject = v);
+                              }
+                            },
                           ),
                           _dropdownField<String>(
                             label: 'Site *',
                             value: _selectedSite,
-                            items: _sites.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))).toList(),
-                            onChanged: (v) => setState(() => _selectedSite = v),
+                            items: [
+                              ..._sites.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))),
+                              const DropdownMenuItem(value: '__CREATE_NEW__', child: Text('+ Create New Site', style: TextStyle(color: AppColors.accentBlue, fontWeight: FontWeight.bold))),
+                            ],
+                            onChanged: (v) {
+                              if (v == '__CREATE_NEW__') {
+                                _showCreateDialog('Site', (data) async {
+                                  await context.read<AppState>().addSite(data['name']!);
+                                  await _loadMasterData(context.read<AppState>());
+                                  setState(() => _selectedSite = data['name']);
+                                });
+                              } else {
+                                setState(() => _selectedSite = v);
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -455,18 +617,30 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                           onTap: () => _pickDate(true),
                         ),
                       ),
-                      if (_reports.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _dropdownField<String>(
-                          label: 'Expense Report (optional)',
-                          value: _selectedReportId,
-                          items: [
-                            const DropdownMenuItem(value: null, child: Text('— None —')),
-                            ..._reports.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))),
-                          ],
-                          onChanged: (v) => setState(() => _selectedReportId = v),
-                        ),
-                      ],
+                      const SizedBox(height: 16),
+                      _dropdownField<String>(
+                        label: 'Expense Report *',
+                        value: _selectedReportId,
+                        items: [
+                          ..._reports.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))),
+                          const DropdownMenuItem(value: '__CREATE_NEW__', child: Text('+ Create New Report', style: TextStyle(color: AppColors.accentBlue, fontWeight: FontWeight.bold))),
+                        ],
+                        onChanged: (v) {
+                          if (v == '__CREATE_NEW__') {
+                            _showCreateDialog('Expense Report', (data) async {
+                              await context.read<AppState>().addExpenseReport(data['name']!, startDate: data['startDate'], endDate: data['endDate']);
+                              await _loadMasterData(context.read<AppState>());
+                              // Find the newly created report to select its ID
+                              final newReport = context.read<AppState>().getExpenseReports().then((reports) {
+                                final r = reports.lastWhere((r) => r.name == data['name']);
+                                setState(() => _selectedReportId = r.id);
+                              });
+                            });
+                          } else {
+                            setState(() => _selectedReportId = v);
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -551,7 +725,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                               const Divider(height: 16),
                               _TotalRow(
                                 label: 'Total Amount',
-                                value: '₹${_fmt(_subtotal)}',
+                                value: 'Rs. ${_fmt(_subtotal)}',
                                 bold: true,
                                 color: AppColors.accentBlue,
                               ),
@@ -574,13 +748,15 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                       const SizedBox(height: 16),
                       _twoCol(
                         _field(_bankHolderCtrl, 'Account Holder Name'),
-                        _field(_bankAccountCtrl, 'Account Number'),
+                        _field(_bankAccountCtrl, 'Account Number', keyboardType: TextInputType.number),
                       ),
                       const SizedBox(height: 16),
                       _twoCol(
-                        _field(_bankNameCtrl, 'Bank and Branch'),
-                        _field(_bankIfscCtrl, 'IFSC Code'),
+                        _field(_bankNameCtrl, 'Bank Name'),
+                        _field(_bankBranchCtrl, 'Branch Name'),
                       ),
+                      const SizedBox(height: 16),
+                      _field(_bankIfscCtrl, 'IFSC Code'),
                     ],
                   ),
                 ),
@@ -863,10 +1039,11 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   }
 
   Widget _field(TextEditingController ctrl, String label,
-      {String? Function(String?)? validator, int maxLines = 1}) {
+      {String? Function(String?)? validator, int maxLines = 1, TextInputType? keyboardType}) {
     return TextFormField(
       controller: ctrl,
       maxLines: maxLines,
+      keyboardType: keyboardType,
       decoration: InputDecoration(labelText: label),
       validator: validator,
     );
@@ -1159,7 +1336,7 @@ class _ItemCardMobile extends StatelessWidget {
               controller: row.rateCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-              decoration: const InputDecoration(labelText: 'Cost (₹)'),
+              decoration: const InputDecoration(labelText: 'Cost (Rs. )'),
               onChanged: (_) => onChanged(),
             )
           else
@@ -1200,7 +1377,7 @@ class _ItemCardMobile extends StatelessWidget {
             children: [
               const Text('Total: ',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              Text('₹${_fmt(row.amount)}',
+              Text('Rs. ${_fmt(row.amount)}',
                   style: const TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.accentBlue)),
             ],
@@ -1238,7 +1415,7 @@ class _ItemHeader extends StatelessWidget {
           const SizedBox(width: 8),
           SizedBox(
               width: isTrips ? 120 : 90,
-              child: Text(isTrips ? 'COST (₹)' : 'RATE PER QTY.',
+              child: Text(isTrips ? 'COST (Rs. )' : 'RATE PER QTY.',
                   style: style, textAlign: TextAlign.right)),
           const SizedBox(width: 8),
           const SizedBox(
@@ -1323,7 +1500,7 @@ class _ItemRowWidget extends StatelessWidget {
               textAlign: TextAlign.right,
               decoration: InputDecoration(
                 hintText: '0.00',
-                labelText: isTrips ? 'Cost (₹)' : null,
+                labelText: isTrips ? 'Cost (Rs. )' : null,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               ),
               onChanged: (_) => onChanged(),
@@ -1333,7 +1510,7 @@ class _ItemRowWidget extends StatelessWidget {
           SizedBox(
             width: 100,
             child: Text(
-              '₹${_fmt(row.amount)}',
+              'Rs. ${_fmt(row.amount)}',
               textAlign: TextAlign.right,
               style: const TextStyle(
                   fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),

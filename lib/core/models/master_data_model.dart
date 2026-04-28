@@ -84,6 +84,8 @@ class ExpenseReport {
   final String createdBy;
   final String createdByName;
   final String createdAt;
+  final String? startDate;
+  final String? endDate;
 
   const ExpenseReport({
     required this.id,
@@ -93,6 +95,8 @@ class ExpenseReport {
     required this.createdBy,
     required this.createdByName,
     required this.createdAt,
+    this.startDate,
+    this.endDate,
   });
 
   factory ExpenseReport.fromJson(Map<String, dynamic> j) => ExpenseReport(
@@ -103,12 +107,16 @@ class ExpenseReport {
         createdBy: j['created_by'],
         createdByName: j['created_by_name'],
         createdAt: j['created_at'] ?? '',
+        startDate: j['start_date'],
+        endDate: j['end_date'],
       );
 
   Map<String, dynamic> toJson() => {
         'name': name,
         if (description != null && description!.isNotEmpty) 'description': description,
         'status': status,
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
       };
 
   String get statusLabel => status == 'open' ? 'Open' : 'Closed';

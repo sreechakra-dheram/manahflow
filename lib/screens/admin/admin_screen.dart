@@ -288,7 +288,8 @@ class _VendorsTab extends StatelessWidget {
             const SizedBox(height: 12),
             TextField(
                 controller: contactCtrl,
-                decoration: const InputDecoration(labelText: 'Contact / Phone')),
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Mobile Number')),
           ],
         ),
         actions: [
@@ -382,41 +383,73 @@ class _ReportsTab extends StatelessWidget {
   Future<void> _showDialog(BuildContext context, ExpenseReport? existing) async {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
+    DateTime? startDate = existing?.startDate != null ? DateTime.tryParse(existing!.startDate!) : null;
+    DateTime? endDate = existing?.endDate != null ? DateTime.tryParse(existing!.endDate!) : null;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(existing == null ? 'Add Report' : 'Edit Report'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Report Name *')),
-            const SizedBox(height: 12),
-            TextField(
-                controller: descCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Description')),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(existing == null ? 'Add Report' : 'Edit Report'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Report Name *')),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: descCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Description')),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(context: ctx, initialDate: startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                        if (picked != null) setDialogState(() => startDate = picked);
+                      },
+                      child: Text(startDate == null ? 'Start Date' : '${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(context: ctx, initialDate: endDate ?? startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                        if (picked != null) setDialogState(() => endDate = picked);
+                      },
+                      child: Text(endDate == null ? 'End Date' : '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Save')),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save')),
-        ],
       ),
     );
     if (confirmed == true && nameCtrl.text.trim().isNotEmpty) {
       final appState = context.read<AppState>();
+      final sDate = startDate != null ? '${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}' : null;
+      final eDate = endDate != null ? '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}' : null;
+
       if (existing == null) {
         await appState.addExpenseReport(nameCtrl.text.trim(),
-            description: descCtrl.text.trim());
+            description: descCtrl.text.trim(), startDate: sDate, endDate: eDate);
       } else {
         await appState.updateExpenseReport(existing.id, nameCtrl.text.trim(),
-            description: descCtrl.text.trim());
+            description: descCtrl.text.trim(), startDate: sDate, endDate: eDate);
       }
     }
   }

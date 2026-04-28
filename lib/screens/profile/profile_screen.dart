@@ -125,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final submitted = snap.data?['submitted']?.toString() ?? '—';
                 final approved = snap.data?['approved']?.toString() ?? '—';
                 final paid = snap.data != null
-                    ? '₹${_fmtAmount((snap.data!['totalPaid'] as double))}'
+                    ? 'Rs. ${_fmtAmount((snap.data!['totalPaid'] as double))}'
                     : '—';
                 return Row(
                   children: [

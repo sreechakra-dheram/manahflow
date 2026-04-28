@@ -361,8 +361,10 @@ class AppState extends ChangeNotifier {
     _supabaseService.unsubscribeAll();
   }
 
-  Future<String?> uploadAttachment(Uint8List bytes, String fileName) =>
-      _supabaseService.uploadImageBytes(bytes, fileName, 'invoices');
+  Future<String?> uploadAttachment(Uint8List bytes, String fileName, {String? mimeType}) =>
+      _supabaseService.uploadImageBytes(bytes, fileName, 'invoices', mimeType: mimeType);
+
+  Future<String> getSignedUrl(String path) => _supabaseService.getSignedUrl(path);
 
   String _resolveName(dynamic credentials) {
     // 1. Custom claim 'name' that isn't an email
@@ -408,11 +410,11 @@ class AppState extends ChangeNotifier {
   Future<List<ExpenseReport>> getExpenseReports() => _masterDataService.fetchExpenseReports();
   Future<ExpenseReport?> getExpenseReportById(String id) => _masterDataService.fetchExpenseReportById(id);
 
-  Future<void> addExpenseReport(String name, {String? description}) =>
-      _masterDataService.addExpenseReport(name, _currentUser!.id, _currentUser!.name, description: description);
+  Future<void> addExpenseReport(String name, {String? description, String? startDate, String? endDate}) =>
+      _masterDataService.addExpenseReport(name, _currentUser!.id, _currentUser!.name, description: description, startDate: startDate, endDate: endDate);
 
-  Future<void> updateExpenseReport(String id, String name, {String? description, String? status}) =>
-      _masterDataService.updateExpenseReport(id, name, description: description, status: status);
+  Future<void> updateExpenseReport(String id, String name, {String? description, String? status, String? startDate, String? endDate}) =>
+      _masterDataService.updateExpenseReport(id, name, description: description, status: status, startDate: startDate, endDate: endDate);
 
   Future<void> deleteExpenseReport(String id) => _masterDataService.deleteExpenseReport(id);
 

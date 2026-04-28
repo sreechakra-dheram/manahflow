@@ -147,7 +147,7 @@ class _ProjectExpenseChart extends StatelessWidget {
         children: [
           const SectionHeader(title: 'Project-wise Expenses'),
           const SizedBox(height: 4),
-          const Text('Total expenditure by project (in Lakhs ₹)',
+          const Text('Total expenditure by project (in Lakhs Rs. )',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
           if (entries.isEmpty)
@@ -168,7 +168,7 @@ class _ProjectExpenseChart extends StatelessWidget {
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-                        '₹${rod.toY.toStringAsFixed(1)}L',
+                        'Rs. ${rod.toY.toStringAsFixed(1)}L',
                         const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.bold),
                       ),
@@ -303,7 +303,7 @@ class _AgingBucketsCard extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 13, color: AppColors.textSecondary)),
                       const Spacer(),
-                      Text('₹${_fmt(entry.value)}',
+                      Text('Rs. ${_fmt(entry.value)}',
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -334,7 +334,7 @@ class _AgingBucketsCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               const Spacer(),
-              Text('₹${_fmt(total)}',
+              Text('Rs. ${_fmt(total)}',
                   style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -416,7 +416,7 @@ class _VendorOutstandingTable extends StatelessWidget {
                   return DataRow(cells: [
                     DataCell(Text(e.key,
                         style: const TextStyle(fontWeight: FontWeight.w600))),
-                    DataCell(Text('₹${_fmt(e.value)}',
+                    DataCell(Text('Rs. ${_fmt(e.value)}',
                         style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.accentBlue))),

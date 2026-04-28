@@ -93,20 +93,24 @@ class MasterDataService {
     return ExpenseReport.fromJson(res);
   }
 
-  Future<void> addExpenseReport(String name, String createdBy, String createdByName, {String? description}) async {
+  Future<void> addExpenseReport(String name, String createdBy, String createdByName, {String? description, String? startDate, String? endDate}) async {
     await _db.from('expense_reports').insert({
       'name': name,
       'created_by': createdBy,
       'created_by_name': createdByName,
       if (description != null && description.isNotEmpty) 'description': description,
+      if (startDate != null && startDate.isNotEmpty) 'start_date': startDate,
+      if (endDate != null && endDate.isNotEmpty) 'end_date': endDate,
     });
   }
 
-  Future<void> updateExpenseReport(String id, String name, {String? description, String? status}) async {
+  Future<void> updateExpenseReport(String id, String name, {String? description, String? status, String? startDate, String? endDate}) async {
     await _db.from('expense_reports').update({
       'name': name,
       if (description != null) 'description': description,
       if (status != null) 'status': status,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
     }).eq('id', id);
   }
 

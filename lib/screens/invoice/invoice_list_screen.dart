@@ -213,7 +213,7 @@ class _InvoiceCard extends StatelessWidget {
                 StatusBadge(status: invoice.statusLabel),
                 const SizedBox(height: 4),
                 Text(
-                  '₹${(invoice.total / 100000).toStringAsFixed(1)}L',
+                  'Rs. ${(invoice.total / 100000).toStringAsFixed(1)}L',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                 ),
               ],

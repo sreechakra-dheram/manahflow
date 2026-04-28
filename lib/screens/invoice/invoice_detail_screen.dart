@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
@@ -45,7 +47,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
   Future<void> _downloadExpense(BuildContext context, InvoiceModel inv) async {
     try {
-      await ExpensePdfService.downloadExpense(inv);
+      final appState = context.read<AppState>();
+      await ExpensePdfService.downloadExpense(
+        inv,
+        getSignedUrl: (path) => appState.getSignedUrl(path),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -222,7 +228,7 @@ class _HeaderCard extends StatelessWidget {
               _InfoPair(label: 'Project', value: inv.projectName),
               _InfoPair(
                   label: 'Total Amount',
-                  value: '₹${_fmt(inv.total)}',
+                  value: 'Rs. ${_fmt(inv.total)}',
                   highlight: true),
             ],
           ),
@@ -265,20 +271,64 @@ class _HeaderCard extends StatelessWidget {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 }
 
-class _SignatureImage extends StatelessWidget {
+class _SignatureImage extends StatefulWidget {
   final String dataUri;
   const _SignatureImage({required this.dataUri});
 
   @override
-  Widget build(BuildContext context) {
+  State<_SignatureImage> createState() => _SignatureImageState();
+}
+
+class _SignatureImageState extends State<_SignatureImage> {
+  String? _resolvedUrl;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  Future<void> _resolve() async {
+    final raw = widget.dataUri;
+    // Legacy base64 data URI
+    if (raw.startsWith('data:image/')) {
+      if (mounted) setState(() { _resolvedUrl = raw; _loading = false; });
+      return;
+    }
+    // Supabase storage path → signed URL
     try {
-      const prefix = 'data:image/png;base64,';
-      if (dataUri.startsWith(prefix)) {
-        final bytes = base64Decode(dataUri.substring(prefix.length));
+      final signed = await context.read<AppState>().getSignedUrl(raw);
+      if (mounted) setState(() { _resolvedUrl = signed; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SizedBox(height: 48, width: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)));
+    if (_resolvedUrl == null) return const SizedBox.shrink();
+
+    // base64 data URI
+    const prefix = 'data:image/png;base64,';
+    if (_resolvedUrl!.startsWith(prefix)) {
+      try {
+        final bytes = base64Decode(_resolvedUrl!.substring(prefix.length));
         return Image.memory(bytes, height: 48, width: 120, fit: BoxFit.contain);
+      } catch (_) {
+        return const SizedBox.shrink();
       }
-    } catch (_) {}
-    return const SizedBox.shrink();
+    }
+
+    // Signed HTTPS URL
+    return Image.network(
+      _resolvedUrl!,
+      height: 48,
+      width: 120,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    );
   }
 }
 
@@ -378,8 +428,8 @@ class _LineItemsCard extends StatelessWidget {
                 DataColumn(label: Text('DESCRIPTION')),
                 DataColumn(label: Text('UNIT')),
                 DataColumn(label: Text('QTY'), numeric: true),
-                DataColumn(label: Text('RATE (₹)'), numeric: true),
-                DataColumn(label: Text('AMOUNT (₹)'), numeric: true),
+                DataColumn(label: Text('RATE (Rs. )'), numeric: true),
+                DataColumn(label: Text('AMOUNT (Rs. )'), numeric: true),
               ],
               rows: inv.lineItems
                   .map((item) => DataRow(cells: [
@@ -427,15 +477,15 @@ class _TaxCard extends StatelessWidget {
         children: [
           const SectionHeader(title: 'Tax Breakdown'),
           const SizedBox(height: 14),
-          _TaxRow(label: 'Subtotal', value: '₹${_fmt(inv.subtotal)}'),
+          _TaxRow(label: 'Subtotal', value: 'Rs. ${_fmt(inv.subtotal)}'),
           const Divider(color: AppColors.borderColor, height: 20),
           _TaxRow(
               label: 'GST @ ${inv.gstPercent.toInt()}%',
-              value: '₹${_fmt(inv.gstAmount)}'),
+              value: 'Rs. ${_fmt(inv.gstAmount)}'),
           const Divider(color: AppColors.borderColor, height: 20),
           _TaxRow(
               label: 'Total Amount',
-              value: '₹${_fmt(inv.total)}',
+              value: 'Rs. ${_fmt(inv.total)}',
               bold: true,
               color: AppColors.accentBlue),
         ],
@@ -447,20 +497,90 @@ class _TaxCard extends StatelessWidget {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 }
 
-class _AttachmentsCard extends StatelessWidget {
+class _AttachmentsCard extends StatefulWidget {
   final InvoiceModel inv;
   const _AttachmentsCard({required this.inv});
+
+  @override
+  State<_AttachmentsCard> createState() => _AttachmentsCardState();
+}
+
+class _AttachmentsCardState extends State<_AttachmentsCard> {
+  bool _loading = true;
+  List<String> _resolvedUrls = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveUrls();
+  }
+
+  Future<void> _resolveUrls() async {
+    final attachments = <String>[];
+    if (widget.inv.data != null && widget.inv.data!['attachments'] != null) {
+      final attData = widget.inv.data!['attachments'];
+      if (attData is List) {
+        for (var a in attData) {
+          if (a != null && a.toString().trim().isNotEmpty) {
+            attachments.add(a.toString().trim());
+          }
+        }
+      } else if (attData is String && attData.isNotEmpty) {
+         attachments.add(attData);
+      }
+    }
+
+    if (widget.inv.imageUrl != null && widget.inv.imageUrl!.isNotEmpty) {
+      if (!attachments.contains(widget.inv.imageUrl)) {
+        attachments.add(widget.inv.imageUrl!);
+      }
+    }
+
+    if (attachments.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    final appState = context.read<AppState>();
+    final resolved = <String>[];
+    for (final path in attachments) {
+      final url = await appState.getSignedUrl(path);
+      resolved.add(url);
+    }
+
+    if (mounted) {
+      setState(() {
+        _resolvedUrls = resolved;
+        _loading = false;
+      });
+    }
+  }
 
   bool _isPdf(String url) => url.toLowerCase().contains('.pdf');
 
   Future<void> _download(BuildContext context, String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open file.')),
+          const SnackBar(content: Text('Downloading file...')),
+        );
+      }
+      final res = await http.get(Uri.parse(url));
+      final bytes = res.bodyBytes;
+      // Extract original filename or generate one
+      String filename = 'attachment';
+      if (url.contains('?')) {
+        final pathPart = url.split('?').first;
+        filename = pathPart.split('/').last;
+      } else {
+        filename = url.split('/').last;
+      }
+      
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
         );
       }
     }
@@ -468,8 +588,14 @@ class _AttachmentsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final attachments = ((inv.data?['attachments']) as List?)?.cast<String>() ?? [];
-    if (attachments.isEmpty) return const SizedBox.shrink();
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_resolvedUrls.isEmpty) return const SizedBox.shrink();
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Container(
@@ -487,13 +613,13 @@ class _AttachmentsCard extends StatelessWidget {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: attachments.map((url) {
+              children: _resolvedUrls.map((url) {
                 final isPdf = _isPdf(url);
                 return Stack(
                   children: [
                     GestureDetector(
                       onTap: isPdf
-                          ? () => _download(context, url)
+                          ? () => _showFullPdf(context, url)
                           : () => _showFullImage(context, url),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -573,7 +699,47 @@ class _AttachmentsCard extends StatelessWidget {
             Positioned(
               top: 8, right: 8,
               child: GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Navigator.pop(_),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                      color: Colors.black54, shape: BoxShape.circle),
+                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullPdf(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: PdfPreview(
+                build: (format) async {
+                  final res = await http.get(Uri.parse(url));
+                  return res.bodyBytes;
+                },
+                allowPrinting: true,
+                allowSharing: true,
+                canChangeOrientation: false,
+                canChangePageFormat: false,
+                canDebug: false,
+              ),
+            ),
+            Positioned(
+              top: 8, right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(_),
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(

@@ -136,7 +136,7 @@ class _ExpenseReportDetailScreenState
                   const SizedBox(width: 24),
                   _StatChip(
                     label: 'Total Amount',
-                    value: '₹${_fmt(total)}',
+                    value: 'Rs. ${_fmt(total)}',
                     icon: Icons.currency_rupee_rounded,
                     highlight: true,
                   ),
@@ -313,7 +313,7 @@ class _ExpenseAccordion extends StatelessWidget {
                       StatusBadge(status: invoice.statusLabel, small: true),
                       const SizedBox(height: 4),
                       Text(
-                        '₹${_fmt(invoice.total)}',
+                        'Rs. ${_fmt(invoice.total)}',
                         style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -370,7 +370,7 @@ class _ExpenseAccordion extends StatelessWidget {
                                       style:
                                           const TextStyle(fontSize: 12))),
                               Text(
-                                '₹${_fmt(item.amount)}',
+                                'Rs. ${_fmt(item.amount)}',
                                 style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600),

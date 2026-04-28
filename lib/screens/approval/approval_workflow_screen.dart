@@ -72,7 +72,7 @@ class ApprovalWorkflowScreen extends StatelessWidget {
                       StatusBadge(status: inv.statusLabel),
                       const SizedBox(height: 8),
                       Text(
-                        '₹${_fmt(inv.total)}',
+                        'Rs. ${_fmt(inv.total)}',
                         style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

@@ -1,31 +1,48 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/invoice_model.dart';
 
 class ExpensePdfService {
-  static Future<void> downloadExpense(InvoiceModel inv) async {
-    final bytes = await _build(inv);
+  static Future<void> downloadExpense(
+    InvoiceModel inv, {
+    Future<String> Function(String path)? getSignedUrl,
+  }) async {
+    final bytes = await _build(inv, getSignedUrl: getSignedUrl);
     await Printing.sharePdf(
       bytes: bytes,
       filename: '${inv.invoiceNumber}.pdf',
     );
   }
 
-  static Future<Uint8List> _build(InvoiceModel inv) async {
+  static Future<Uint8List> _build(
+    InvoiceModel inv, {
+    Future<String> Function(String path)? getSignedUrl,
+  }) async {
     final doc = pw.Document();
 
     // Load logo asset
     final logoBytes = await rootBundle.load('manah.jpg');
     final logo = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
+    // Resolve signature paths to signed URLs if a resolver is provided
+    Future<String?> resolveUrl(String? raw) async {
+      if (raw == null || raw.isEmpty) return null;
+      if (raw.startsWith('data:') || raw.startsWith('http')) return raw;
+      if (getSignedUrl != null) {
+        try { return await getSignedUrl(raw); } catch (_) {}
+      }
+      return null;
+    }
+
     // Load signature images (best-effort)
-    final submitterSig = await _networkImage(inv.submitterSignatureUrl);
-    final pmSig = await _networkImage(inv.pmSignatureUrl);
-    final financeSig = await _networkImage(inv.financeSignatureUrl);
+    final submitterSig = await _networkImage(await resolveUrl(inv.submitterSignatureUrl));
+    final pmSig = await _networkImage(await resolveUrl(inv.pmSignatureUrl));
+    final financeSig = await _networkImage(await resolveUrl(inv.financeSignatureUrl));
 
     final baseStyle = pw.TextStyle(fontSize: 9, font: pw.Font.helvetica());
     final boldStyle =
@@ -111,7 +128,7 @@ class ExpensePdfService {
               pw.SizedBox(height: 6),
             ],
             pw.Text(
-              'Please approve the reimbursement of ₹${_fmt(inv.subtotal)} towards '
+              'Please approve the reimbursement of Rs. ${_fmt(inv.subtotal)} towards '
               'miscellaneous / travel expenses incurred by ${inv.beneficiaryName ?? inv.submittedByName} '
               'for ${inv.projectName}. '
               'All supporting bills have been enclosed. '
@@ -127,7 +144,7 @@ class ExpensePdfService {
             pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Please approve the payment of ₹${_fmt(inv.subtotal)} towards '
+              'Please approve the payment of Rs. ${_fmt(inv.subtotal)} towards '
               'Purchase of products from ${inv.vendorName.toUpperCase()}. '
               'The material has been received as per the requirement, and the '
               'vendor invoice has been verified. Kindly process the payment at '
@@ -174,7 +191,7 @@ class ExpensePdfService {
                       align: pw.Alignment.centerRight),
                   _cell(_fmt(item.rate), baseStyle,
                       align: pw.Alignment.centerRight),
-                  _cell('₹${_fmt(item.amount)}', baseStyle,
+                  _cell('Rs. ${_fmt(item.amount)}', baseStyle,
                       align: pw.Alignment.centerRight),
                 ]);
               }),
@@ -200,7 +217,7 @@ class ExpensePdfService {
                   _cell('', baseStyle),
                   _cell('Accumulated Total', boldStyle,
                       align: pw.Alignment.centerRight),
-                  _cell('₹${_fmt(inv.subtotal)}', boldStyle,
+                  _cell('Rs. ${_fmt(inv.subtotal)}', boldStyle,
                       align: pw.Alignment.centerRight),
                 ],
               ),
@@ -376,9 +393,15 @@ class ExpensePdfService {
   static Future<pw.MemoryImage?> _networkImage(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
+      // Legacy base64 data URI
       const prefix = 'data:image/png;base64,';
       if (url.startsWith(prefix)) {
         return pw.MemoryImage(base64Decode(url.substring(prefix.length)));
+      }
+      // HTTPS signed URL — fetch bytes via HTTP
+      if (url.startsWith('http')) {
+        final res = await http.get(Uri.parse(url));
+        if (res.statusCode == 200) return pw.MemoryImage(res.bodyBytes);
       }
     } catch (_) {}
     return null;

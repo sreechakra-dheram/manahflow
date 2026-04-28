@@ -180,7 +180,7 @@ class _KpiGrid extends StatelessWidget {
               ),
               _ZohoKpiCard(
                 label: 'TOTAL REIMBURSED',
-                value: '₹${(totalPaid / 100000).toStringAsFixed(1)}L',
+                value: 'Rs. ${(totalPaid / 100000).toStringAsFixed(1)}L',
                 color: const Color(0xFF6366F1),
                 icon: Icons.account_balance_wallet_outlined,
               ),
@@ -332,8 +332,8 @@ class _SpendingTrend extends StatelessWidget {
         // Total spend for subtitle
         final totalK = rawValues.fold(0.0, (s, v) => s + v);
         final totalLabel = totalK >= 100000
-            ? '₹${(totalK / 100000).toStringAsFixed(1)}L total'
-            : '₹${(totalK / 1000).toStringAsFixed(1)}K total';
+            ? 'Rs. ${(totalK / 100000).toStringAsFixed(1)}L total'
+            : 'Rs. ${(totalK / 1000).toStringAsFixed(1)}K total';
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -410,7 +410,7 @@ class _SpendingTrend extends StatelessWidget {
                             touchTooltipData: LineTouchTooltipData(
                               getTooltipItems: (spots) => spots
                                   .map((s) => LineTooltipItem(
-                                        '₹${(s.y * 1000 >= 100000 ? '${(s.y / 100).toStringAsFixed(1)}L' : '${s.y.toStringAsFixed(1)}K')}',
+                                        'Rs. ${(s.y * 1000 >= 100000 ? '${(s.y / 100).toStringAsFixed(1)}L' : '${s.y.toStringAsFixed(1)}K')}',
                                         const TextStyle(
                                             color: Colors.white, fontWeight: FontWeight.w600),
                                       ))
@@ -486,7 +486,7 @@ class _TopProjects extends StatelessWidget {
               else
                 ...sortedProjects.take(4).map((e) => _ProjectSpendItem(
                   name: e.key,
-                  amount: '₹${(e.value / 1000).toStringAsFixed(1)}k',
+                  amount: 'Rs. ${(e.value / 1000).toStringAsFixed(1)}k',
                   progress: e.value / maxSpend,
                   color: AppColors.accentBlue,
                 )),
@@ -564,7 +564,7 @@ class _RecentActivityTable extends StatelessWidget {
                 final dateStr = a['created_at'].toString().split('T').first;
                 final title = a['vendor_name'] ?? a['project_name'] ?? 'Invoice';
                 final status = a['status'] ?? 'submitted';
-                final amount = '₹${a['subtotal'] ?? 0}';
+                final amount = 'Rs. ${a['subtotal'] ?? 0}';
                 
                 Color statusColor = Colors.blue;
                 if (status == 'paid' || status == 'approved') statusColor = Colors.green;

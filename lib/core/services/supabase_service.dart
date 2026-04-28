@@ -40,28 +40,63 @@ class SupabaseService {
   }
 
   Future<String?> uploadImageBytes(
-      Uint8List bytes, String fileName, String path) async {
+      Uint8List bytes, String fileName, String path, {String? mimeType}) async {
     final lower = fileName.toLowerCase();
-    final ext = lower.endsWith('.pdf')
-        ? 'pdf'
+    // Use the explicitly provided mimeType if available, else detect from filename
+    final resolvedMime = mimeType ?? (lower.endsWith('.pdf')
+        ? 'application/pdf'
         : lower.endsWith('.png')
+            ? 'image/png'
+            : 'image/jpeg');
+    final ext = resolvedMime == 'application/pdf'
+        ? 'pdf'
+        : resolvedMime.contains('png')
             ? 'png'
             : 'jpg';
-    final mime = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
     final fullName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
     final fullPath = '$path/$fullName';
     await _client.storage
         .from('expense_attachments')
         .uploadBinary(fullPath, bytes,
-            fileOptions: FileOptions(contentType: mime, upsert: false));
-    return _client.storage
-        .from('expense_attachments')
-        .getPublicUrl(fullPath);
+            fileOptions: FileOptions(contentType: resolvedMime, upsert: false));
+    return fullPath;
   }
 
   Future<String?> uploadSignatureBytes(
       Uint8List bytes, String invoiceId, String role) async {
-    return 'data:image/png;base64,${base64Encode(bytes)}';
+    final fileName = 'sig_${invoiceId}_${role}_${DateTime.now().millisecondsSinceEpoch}.png';
+    final fullPath = 'signatures/$fileName';
+    await _client.storage
+        .from('expense_attachments')
+        .uploadBinary(fullPath, bytes,
+            fileOptions: const FileOptions(contentType: 'image/png', upsert: false));
+    return fullPath;
+  }
+
+  Future<String> getSignedUrl(String path) async {
+    if (path.startsWith('data:')) return path;
+
+    String objectPath = path;
+    
+    // If it's an old public URL stored in the DB, extract the path part
+    if (path.startsWith('http')) {
+      final marker = 'expense_attachments/';
+      final idx = path.indexOf(marker);
+      if (idx != -1) {
+        // Extracts 'invoices/123.jpg' from 'https://.../expense_attachments/invoices/123.jpg'
+        objectPath = path.substring(idx + marker.length).split('?').first;
+      } else {
+        return path; // Cannot parse, return as is
+      }
+    }
+
+    try {
+      return await _client.storage
+          .from('expense_attachments')
+          .createSignedUrl(objectPath, 60 * 60); // valid for 1 hour
+    } catch (_) {
+      return path; // fallback
+    }
   }
 
   Future<void> submitInvoice({

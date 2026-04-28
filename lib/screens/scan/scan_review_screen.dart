@@ -216,7 +216,7 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
                       controller: _totalCtrl,
                       textAlign: TextAlign.right,
                       decoration: const InputDecoration(
-                        prefixText: '₹ ',
+                        prefixText: 'Rs.  ',
                         prefixStyle: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AppColors.accentBlue),
@@ -331,7 +331,7 @@ class _LineItemRow extends StatelessWidget {
                 child: TextFormField(
                   controller: controllers['rate'],
                   decoration: const InputDecoration(
-                      labelText: 'Rate (₹)', filled: false),
+                      labelText: 'Rate (Rs. )', filled: false),
                   keyboardType: TextInputType.number,
                 ),
               ),
@@ -340,7 +340,7 @@ class _LineItemRow extends StatelessWidget {
                 child: TextFormField(
                   controller: controllers['amount'],
                   decoration: const InputDecoration(
-                      labelText: 'Amount (₹)', filled: false),
+                      labelText: 'Amount (Rs. )', filled: false),
                   keyboardType: TextInputType.number,
                 ),
               ),
