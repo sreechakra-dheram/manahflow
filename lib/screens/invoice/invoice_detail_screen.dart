@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/models/invoice_model.dart' show InvoiceModel, InvoiceStatus, InvoiceLineItem, ApprovalStage, ApprovalStageStatus;
@@ -450,6 +451,21 @@ class _AttachmentsCard extends StatelessWidget {
   final InvoiceModel inv;
   const _AttachmentsCard({required this.inv});
 
+  bool _isPdf(String url) => url.toLowerCase().contains('.pdf');
+
+  Future<void> _download(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open file.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final attachments = ((inv.data?['attachments']) as List?)?.cast<String>() ?? [];
@@ -457,42 +473,88 @@ class _AttachmentsCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderColor),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(title: 'Attachments'),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: attachments.map((url) {
+                final isPdf = _isPdf(url);
+                return Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: isPdf
+                          ? () => _download(context, url)
+                          : () => _showFullImage(context, url),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: isPdf
+                            ? Container(
+                                width: 90, height: 90,
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundLight,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.borderColor),
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.picture_as_pdf_rounded,
+                                        color: AppColors.statusRed, size: 32),
+                                    SizedBox(height: 4),
+                                    Text('PDF', style: TextStyle(fontSize: 10,
+                                        color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              )
+                            : Image.network(
+                                url,
+                                width: 90, height: 90,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 90, height: 90,
+                                  color: AppColors.backgroundLight,
+                                  child: const Icon(Icons.broken_image_outlined,
+                                      color: AppColors.textSecondary),
+                                ),
+                              ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0, right: 0,
+                      child: GestureDetector(
+                        onTap: () => _download(context, url),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.accentBlue,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(6),
+                              bottomRight: Radius.circular(8),
+                            ),
+                          ),
+                          child: const Icon(Icons.download_rounded,
+                              color: Colors.white, size: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Attachments'),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: attachments.map((url) => GestureDetector(
-              onTap: () => _showFullImage(context, url),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  url,
-                  width: 90,
-                  height: 90,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 90, height: 90,
-                    color: AppColors.backgroundLight,
-                    child: const Icon(Icons.broken_image_outlined, color: AppColors.textSecondary),
-                  ),
-                ),
-              ),
-            )).toList(),
-          ),
-        ],
-      ),
-    ),  // Container
-    );  // Padding
+    );
   }
 
   void _showFullImage(BuildContext context, String url) {
@@ -514,7 +576,8 @@ class _AttachmentsCard extends StatelessWidget {
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                      color: Colors.black54, shape: BoxShape.circle),
                   child: const Icon(Icons.close, color: Colors.white, size: 18),
                 ),
               ),

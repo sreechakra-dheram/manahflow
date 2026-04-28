@@ -361,8 +361,8 @@ class AppState extends ChangeNotifier {
     _supabaseService.unsubscribeAll();
   }
 
-  Future<String?> uploadAttachment(dynamic file) =>
-      _supabaseService.uploadImage(file, 'invoices');
+  Future<String?> uploadAttachment(Uint8List bytes, String fileName) =>
+      _supabaseService.uploadImageBytes(bytes, fileName, 'invoices');
 
   String _resolveName(dynamic credentials) {
     // 1. Custom claim 'name' that isn't an email

@@ -51,136 +51,146 @@ class _ExpenseReportDetailScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Error: $_error'),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Error: $_error'),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _load, child: const Text('Retry')),
+          ],
         ),
       );
     }
 
     final report = _report;
     if (report == null) {
-      return const Scaffold(body: Center(child: Text('Report not found.')));
+      return const Center(child: Text('Report not found.'));
     }
 
     final total = _invoices.fold<double>(0, (s, inv) => s + inv.total);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(report.name, overflow: TextOverflow.ellipsis),
-        leading: BackButton(onPressed: () => context.pop()),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: report.status == 'open'
-                  ? AppColors.statusGreenBg
-                  : AppColors.borderColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              report.statusLabel,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: report.status == 'open'
-                      ? AppColors.statusGreen
-                      : AppColors.textSecondary),
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: CustomScrollView(
+        slivers: [
+          // Inline header (report name + status + back button)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  BackButton(onPressed: () => context.pop()),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      report.name,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: report.status == 'open'
+                          ? AppColors.statusGreenBg
+                          : AppColors.borderColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      report.statusLabel,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: report.status == 'open'
+                              ? AppColors.statusGreen
+                              : AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            // Summary bar
-            SliverToBoxAdapter(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.cardWhite,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.borderColor),
-                ),
-                child: Row(
-                  children: [
-                    _StatChip(
-                      label: 'Expenses',
-                      value: '${_invoices.length}',
-                      icon: Icons.receipt_long_rounded,
-                    ),
+          // Summary bar
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.cardWhite,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderColor),
+              ),
+              child: Row(
+                children: [
+                  _StatChip(
+                    label: 'Expenses',
+                    value: '${_invoices.length}',
+                    icon: Icons.receipt_long_rounded,
+                  ),
+                  const SizedBox(width: 24),
+                  _StatChip(
+                    label: 'Total Amount',
+                    value: '₹${_fmt(total)}',
+                    icon: Icons.currency_rupee_rounded,
+                    highlight: true,
+                  ),
+                  if (report.description != null &&
+                      report.description!.isNotEmpty) ...[
                     const SizedBox(width: 24),
-                    _StatChip(
-                      label: 'Total Amount',
-                      value: '₹${_fmt(total)}',
-                      icon: Icons.currency_rupee_rounded,
-                      highlight: true,
-                    ),
-                    if (report.description != null &&
-                        report.description!.isNotEmpty) ...[
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: Text(
-                          report.description!,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary),
-                        ),
+                    Expanded(
+                      child: Text(
+                        report.description!,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
-                    ],
+                    ),
                   ],
+                ],
+              ),
+            ),
+          ),
+          // Expense list
+          if (_invoices.isEmpty)
+            const SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  'No expenses linked to this report.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) {
+                    final inv = _invoices[i];
+                    final isExpanded = _expanded.contains(inv.id);
+                    return _ExpenseAccordion(
+                      invoice: inv,
+                      isExpanded: isExpanded,
+                      onToggle: () => setState(() {
+                        if (isExpanded) {
+                          _expanded.remove(inv.id);
+                        } else {
+                          _expanded.add(inv.id);
+                        }
+                      }),
+                      onOpen: () => context.push('/invoices/${inv.id}'),
+                    );
+                  },
+                  childCount: _invoices.length,
                 ),
               ),
             ),
-            // Expense list
-            if (_invoices.isEmpty)
-              const SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'No expenses linked to this report.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (ctx, i) {
-                      final inv = _invoices[i];
-                      final isExpanded = _expanded.contains(inv.id);
-                      return _ExpenseAccordion(
-                        invoice: inv,
-                        isExpanded: isExpanded,
-                        onToggle: () => setState(() {
-                          if (isExpanded) {
-                            _expanded.remove(inv.id);
-                          } else {
-                            _expanded.add(inv.id);
-                          }
-                        }),
-                        onOpen: () => context.push('/invoices/${inv.id}'),
-                      );
-                    },
-                    childCount: _invoices.length,
-                  ),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

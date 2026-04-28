@@ -130,6 +130,7 @@ class InvoiceModel {
   final String? pmSignatureUrl;
   final String? financeSignatureUrl;
   final String? reportId;
+  final String? remarks;
 
   const InvoiceModel({
     required this.id,
@@ -163,6 +164,7 @@ class InvoiceModel {
     this.pmSignatureUrl,
     this.financeSignatureUrl,
     this.reportId,
+    this.remarks,
   });
 
   double get gstAmount => subtotal * (gstPercent / 100);
@@ -227,6 +229,7 @@ class InvoiceModel {
       pmSignatureUrl: json['pm_signature_url'],
       financeSignatureUrl: json['finance_signature_url'],
       reportId: json['report_id'],
+      remarks: json['remarks'],
     );
   }
 }

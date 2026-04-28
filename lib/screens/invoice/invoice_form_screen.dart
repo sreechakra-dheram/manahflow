@@ -13,10 +13,6 @@ import '../../shared/widgets/signature_pad.dart';
 const _noteTypes = [
   'Material Purchase',
   'Miscellaneous / Trips',
-  'Service Expense',
-  'Equipment Hire',
-  'Labour Payment',
-  'Subcontractor Bill',
 ];
 
 const _maxAttachmentBytes = 10 * 1024 * 1024; // 10 MB total
@@ -32,6 +28,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _invoiceNumberCtrl = TextEditingController();
+  final _reasonCtrl = TextEditingController();
   final _remarksCtrl = TextEditingController();
   final _bankHolderCtrl = TextEditingController();
   final _bankAccountCtrl = TextEditingController();
@@ -95,6 +92,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   @override
   void dispose() {
     _invoiceNumberCtrl.dispose();
+    _reasonCtrl.dispose();
     _beneficiaryCtrl.dispose();
     _remarksCtrl.dispose();
     _bankHolderCtrl.dispose();
@@ -208,8 +206,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedProject == null) { _snack('Select a project.'); return; }
-    if (_selectedVendor == null) { _snack('Select a vendor.'); return; }
-    if (_selectedSite == null) { _snack('Select a site.'); return; }
+    if (!_isTripsType && _selectedVendor == null) { _snack('Select a vendor.'); return; }
+    if (!_isTripsType && _selectedSite == null) { _snack('Select a site.'); return; }
+    if (_isTripsType && _reasonCtrl.text.trim().isEmpty) { _snack('Enter a reason for the expense.'); return; }
     if (_items.every((r) => r.descCtrl.text.trim().isEmpty)) {
       _snack('Add at least one line item.');
       return;
@@ -231,7 +230,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       final urls = <String>[];
       for (final att in _attachments) {
         try {
-          final url = await appState.uploadAttachment(att.xFile);
+          final url = await appState.uploadAttachment(att.bytes, att.xFile.name);
           if (url != null) urls.add(url);
         } catch (_) {}
       }
@@ -247,14 +246,14 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
       await appState.submitInvoice(
         projectName: _selectedProject!,
-        siteName: _selectedSite!,
-        vendorName: _selectedVendor!,
+        siteName: _isTripsType ? '' : (_selectedSite ?? ''),
+        vendorName: _isTripsType ? 'N/A' : (_selectedVendor ?? ''),
         invoiceNumber: _invoiceNumberCtrl.text.trim(),
         date: _fmtDate(_date),
         dueDate: _fmtDate(_dueDate),
         subtotal: _subtotal,
         gstPercent: 0,
-        remarks: _remarksCtrl.text.trim(),
+        remarks: _isTripsType ? _reasonCtrl.text.trim() : _remarksCtrl.text.trim(),
         lineItems: _items
             .where((r) => r.descCtrl.text.trim().isNotEmpty)
             .map((r) => {
@@ -383,31 +382,53 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         ),
                       ],
                       const SizedBox(height: 16),
-                      _twoCol(
-                        _field(_invoiceNumberCtrl, 'Ref No.',
-                            validator: _required),
-                        _dropdownField<String>(
-                          label: 'Vendor / Contractor *',
-                          value: _selectedVendor,
-                          items: _vendors.map((v) => DropdownMenuItem(value: v.name, child: Text(v.name))).toList(),
-                          onChanged: (v) => setState(() => _selectedVendor = v),
+                      if (_isTripsType) ...[
+                        _twoCol(
+                          _field(_invoiceNumberCtrl, 'Ref No.',
+                              validator: _required),
+                          _dropdownField<String>(
+                            label: 'Project *',
+                            value: _selectedProject,
+                            items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
+                            onChanged: (v) => setState(() => _selectedProject = v),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _twoCol(
-                        _dropdownField<String>(
-                          label: 'Project *',
-                          value: _selectedProject,
-                          items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
-                          onChanged: (v) => setState(() => _selectedProject = v),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _reasonCtrl,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Reason for Expense *',
+                            hintText: 'e.g. Site visit to Whitefield, travel for supplier meeting…',
+                          ),
                         ),
-                        _dropdownField<String>(
-                          label: 'Site *',
-                          value: _selectedSite,
-                          items: _sites.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))).toList(),
-                          onChanged: (v) => setState(() => _selectedSite = v),
+                      ] else ...[
+                        _twoCol(
+                          _field(_invoiceNumberCtrl, 'Ref No.',
+                              validator: _required),
+                          _dropdownField<String>(
+                            label: 'Vendor / Contractor *',
+                            value: _selectedVendor,
+                            items: _vendors.map((v) => DropdownMenuItem(value: v.name, child: Text(v.name))).toList(),
+                            onChanged: (v) => setState(() => _selectedVendor = v),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        _twoCol(
+                          _dropdownField<String>(
+                            label: 'Project *',
+                            value: _selectedProject,
+                            items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
+                            onChanged: (v) => setState(() => _selectedProject = v),
+                          ),
+                          _dropdownField<String>(
+                            label: 'Site *',
+                            value: _selectedSite,
+                            items: _sites.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))).toList(),
+                            onChanged: (v) => setState(() => _selectedSite = v),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       _twoCol(
                         _readOnly(
@@ -484,13 +505,14 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  _ItemHeader(),
+                                  _ItemHeader(isTrips: _isTripsType),
                                   const Divider(
                                       color: AppColors.borderColor),
                                   ...List.generate(
                                     _items.length,
                                     (i) => _ItemRowWidget(
                                       row: _items[i],
+                                      isTrips: _isTripsType,
                                       canDelete: _items.length > 1,
                                       onChanged: () => setState(() {}),
                                       onDelete: () => setState(
@@ -508,6 +530,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                             (i) => _ItemCardMobile(
                               index: i,
                               row: _items[i],
+                              isTrips: _isTripsType,
                               canDelete: _items.length > 1,
                               onChanged: () => setState(() {}),
                               onDelete: () =>
@@ -1062,7 +1085,8 @@ class _LineItemRow {
 
   double get quantity => double.tryParse(qtyCtrl.text) ?? 0;
   double get rate => double.tryParse(rateCtrl.text) ?? 0;
-  double get amount => quantity * rate;
+  // When qty is empty (trips mode), treat rate as direct cost
+  double get amount => quantity > 0 ? quantity * rate : rate;
 
   void dispose() {
     descCtrl.dispose();
@@ -1077,6 +1101,7 @@ class _LineItemRow {
 class _ItemCardMobile extends StatelessWidget {
   final int index;
   final _LineItemRow row;
+  final bool isTrips;
   final bool canDelete;
   final VoidCallback onChanged;
   final VoidCallback onDelete;
@@ -1084,6 +1109,7 @@ class _ItemCardMobile extends StatelessWidget {
   const _ItemCardMobile({
     required this.index,
     required this.row,
+    required this.isTrips,
     required this.canDelete,
     required this.onChanged,
     required this.onDelete,
@@ -1121,66 +1147,62 @@ class _ItemCardMobile extends StatelessWidget {
           const SizedBox(height: 10),
           TextFormField(
             controller: row.descCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Product Name',
-              hintText: 'Product or service description',
+            decoration: InputDecoration(
+              labelText: isTrips ? 'Description' : 'Product Name',
+              hintText: isTrips ? 'e.g. Site visit, Fuel' : 'Product or service',
             ),
             onChanged: (_) => onChanged(),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: row.unitCtrl,
-                  decoration: const InputDecoration(labelText: 'Unit'),
-                  onChanged: (_) => onChanged(),
+          if (isTrips)
+            TextFormField(
+              controller: row.rateCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+              decoration: const InputDecoration(labelText: 'Cost (₹)'),
+              onChanged: (_) => onChanged(),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: row.unitCtrl,
+                    decoration: const InputDecoration(labelText: 'Unit'),
+                    onChanged: (_) => onChanged(),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: row.qtyCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d*'))
-                  ],
-                  decoration: const InputDecoration(labelText: 'Qty.'),
-                  onChanged: (_) => onChanged(),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextFormField(
+                    controller: row.qtyCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Qty.'),
+                    onChanged: (_) => onChanged(),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: row.rateCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d*'))
-                  ],
-                  decoration:
-                      const InputDecoration(labelText: 'Rate per qty.'),
-                  onChanged: (_) => onChanged(),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextFormField(
+                    controller: row.rateCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Rate per qty.'),
+                    onChanged: (_) => onChanged(),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               const Text('Total: ',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               Text('₹${_fmt(row.amount)}',
                   style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accentBlue)),
+                      fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.accentBlue)),
             ],
           ),
         ],
@@ -1193,32 +1215,36 @@ class _ItemCardMobile extends StatelessWidget {
 }
 
 class _ItemHeader extends StatelessWidget {
+  final bool isTrips;
+  const _ItemHeader({this.isTrips = false});
+
   @override
   Widget build(BuildContext context) {
     const style = TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary);
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+        fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(flex: 4, child: Text('PRODUCT NAME', style: style)),
-          SizedBox(width: 8),
-          SizedBox(width: 60, child: Text('UNIT', style: style)),
-          SizedBox(width: 8),
+          const Expanded(flex: 4, child: Text('DESCRIPTION', style: style)),
+          if (!isTrips) ...[
+            const SizedBox(width: 8),
+            const SizedBox(width: 60, child: Text('UNIT', style: style)),
+            const SizedBox(width: 8),
+            const SizedBox(
+                width: 60,
+                child: Text('QTY.', style: style, textAlign: TextAlign.right)),
+          ],
+          const SizedBox(width: 8),
           SizedBox(
-              width: 60,
-              child: Text('QTY.', style: style, textAlign: TextAlign.right)),
-          SizedBox(width: 8),
-          SizedBox(
-              width: 90,
-              child: Text('RATE PER QTY.', style: style, textAlign: TextAlign.right)),
-          SizedBox(width: 8),
-          SizedBox(
+              width: isTrips ? 120 : 90,
+              child: Text(isTrips ? 'COST (₹)' : 'RATE PER QTY.',
+                  style: style, textAlign: TextAlign.right)),
+          const SizedBox(width: 8),
+          const SizedBox(
               width: 100,
-              child: Text('TOTAL COST', style: style, textAlign: TextAlign.right)),
-          SizedBox(width: 32),
+              child: Text('TOTAL', style: style, textAlign: TextAlign.right)),
+          const SizedBox(width: 32),
         ],
       ),
     );
@@ -1227,12 +1253,14 @@ class _ItemHeader extends StatelessWidget {
 
 class _ItemRowWidget extends StatelessWidget {
   final _LineItemRow row;
+  final bool isTrips;
   final bool canDelete;
   final VoidCallback onChanged;
   final VoidCallback onDelete;
 
   const _ItemRowWidget({
     required this.row,
+    required this.isTrips,
     required this.canDelete,
     required this.onChanged,
     required this.onDelete,
@@ -1249,61 +1277,54 @@ class _ItemRowWidget extends StatelessWidget {
             flex: 4,
             child: TextFormField(
               controller: row.descCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Product name',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: InputDecoration(
+                hintText: isTrips ? 'e.g. Site visit, Fuel' : 'Product name',
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               ),
               onChanged: (_) => onChanged(),
             ),
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 60,
-            child: TextFormField(
-              controller: row.unitCtrl,
-              decoration: const InputDecoration(
-                hintText: 'pcs',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          if (!isTrips) ...[
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 60,
+              child: TextFormField(
+                controller: row.unitCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'pcs',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                ),
+                onChanged: (_) => onChanged(),
               ),
-              onChanged: (_) => onChanged(),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 60,
-            child: TextFormField(
-              controller: row.qtyCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
-              ],
-              textAlign: TextAlign.right,
-              decoration: const InputDecoration(
-                hintText: '0',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 60,
+              child: TextFormField(
+                controller: row.qtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  hintText: '0',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                ),
+                onChanged: (_) => onChanged(),
               ),
-              onChanged: (_) => onChanged(),
             ),
-          ),
+          ],
           const SizedBox(width: 8),
           SizedBox(
-            width: 90,
+            width: isTrips ? 120 : 90,
             child: TextFormField(
               controller: row.rateCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
-              ],
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               textAlign: TextAlign.right,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '0.00',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                labelText: isTrips ? 'Cost (₹)' : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               ),
               onChanged: (_) => onChanged(),
             ),
@@ -1315,9 +1336,7 @@ class _ItemRowWidget extends StatelessWidget {
               '₹${_fmt(row.amount)}',
               textAlign: TextAlign.right,
               style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary),
+                  fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
           ),
           const SizedBox(width: 4),

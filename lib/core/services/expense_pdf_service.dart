@@ -106,12 +106,15 @@ class ExpensePdfService {
             pw.SizedBox(height: 4),
             pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
             pw.SizedBox(height: 8),
+            if (inv.remarks != null && inv.remarks!.isNotEmpty) ...[
+              pw.Text('Reason: ${inv.remarks}', style: baseStyle),
+              pw.SizedBox(height: 6),
+            ],
             pw.Text(
-              'Please approve the reimbursement of Rs ${_fmt(inv.subtotal)}/- towards '
-              'site visit and travel expenses incurred by ${inv.beneficiaryName ?? inv.submittedByName} '
+              'Please approve the reimbursement of ₹${_fmt(inv.subtotal)} towards '
+              'miscellaneous / travel expenses incurred by ${inv.beneficiaryName ?? inv.submittedByName} '
               'for ${inv.projectName}. '
-              'The field visits were conducted as part of project activities and all '
-              'travel expenses have been properly documented with supporting bills. '
+              'All supporting bills have been enclosed. '
               'Kindly process the reimbursement at the earliest.',
               style: baseStyle,
             ),
@@ -124,7 +127,7 @@ class ExpensePdfService {
             pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Please approve the payment of Rs ${_fmt(inv.subtotal)}/- towards '
+              'Please approve the payment of ₹${_fmt(inv.subtotal)} towards '
               'Purchase of products from ${inv.vendorName.toUpperCase()}. '
               'The material has been received as per the requirement, and the '
               'vendor invoice has been verified. Kindly process the payment at '

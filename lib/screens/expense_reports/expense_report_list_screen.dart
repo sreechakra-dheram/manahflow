@@ -23,8 +23,11 @@ class _ExpenseReportListScreenState extends State<ExpenseReportListScreen> {
     _reload();
   }
 
-  void _reload() =>
-      setState(() => _future = context.read<AppState>().getExpenseReports());
+  void _reload() {
+    setState(() {
+      _future = context.read<AppState>().getExpenseReports();
+    });
+  }
 
   Future<void> _createReport() async {
     final nameCtrl = TextEditingController();

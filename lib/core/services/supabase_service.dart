@@ -39,23 +39,24 @@ class SupabaseService {
     await _client.from(table).update(update).eq('id', id);
   }
 
-  Future<String?> uploadImage(dynamic file, String path) async {
-    final ext = _guessExt(file);
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final fullPath = '$path/$fileName';
-    await _client.storage.from('expense_attachments').upload(fullPath, file);
-    return _client.storage.from('expense_attachments').getPublicUrl(fullPath);
-  }
-
-  String _guessExt(dynamic file) {
-    // XFile / File both have a `.path` or `.name` property
-    try {
-      final name = (file.name ?? file.path ?? '') as String;
-      final lower = name.toLowerCase();
-      if (lower.endsWith('.pdf')) return 'pdf';
-      if (lower.endsWith('.png')) return 'png';
-    } catch (_) {}
-    return 'jpg';
+  Future<String?> uploadImageBytes(
+      Uint8List bytes, String fileName, String path) async {
+    final lower = fileName.toLowerCase();
+    final ext = lower.endsWith('.pdf')
+        ? 'pdf'
+        : lower.endsWith('.png')
+            ? 'png'
+            : 'jpg';
+    final mime = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
+    final fullName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final fullPath = '$path/$fullName';
+    await _client.storage
+        .from('expense_attachments')
+        .uploadBinary(fullPath, bytes,
+            fileOptions: FileOptions(contentType: mime, upsert: false));
+    return _client.storage
+        .from('expense_attachments')
+        .getPublicUrl(fullPath);
   }
 
   Future<String?> uploadSignatureBytes(
