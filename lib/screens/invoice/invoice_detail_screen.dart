@@ -213,6 +213,8 @@ class _HeaderCard extends StatelessWidget {
             children: [
               if (inv.noteType != null)
                 _InfoPair(label: 'Note Type', value: inv.noteType!),
+              if (inv.beneficiaryName != null)
+                _InfoPair(label: 'Raised For', value: inv.beneficiaryName!),
               _InfoPair(label: 'Vendor', value: inv.vendorName),
               _InfoPair(label: 'Invoice Date', value: inv.date),
               _InfoPair(label: 'Due Date', value: inv.dueDate),

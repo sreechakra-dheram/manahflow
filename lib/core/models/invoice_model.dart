@@ -129,6 +129,7 @@ class InvoiceModel {
   final String? submitterSignatureUrl;
   final String? pmSignatureUrl;
   final String? financeSignatureUrl;
+  final String? reportId;
 
   const InvoiceModel({
     required this.id,
@@ -161,10 +162,13 @@ class InvoiceModel {
     this.submitterSignatureUrl,
     this.pmSignatureUrl,
     this.financeSignatureUrl,
+    this.reportId,
   });
 
   double get gstAmount => subtotal * (gstPercent / 100);
   double get total => subtotal + gstAmount;
+
+  String? get beneficiaryName => data?['beneficiary_name'] as String?;
 
   String get statusLabel {
     switch (status) {
@@ -222,6 +226,7 @@ class InvoiceModel {
       submitterSignatureUrl: json['submitter_signature_url'],
       pmSignatureUrl: json['pm_signature_url'],
       financeSignatureUrl: json['finance_signature_url'],
+      reportId: json['report_id'],
     );
   }
 }

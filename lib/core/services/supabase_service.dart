@@ -40,12 +40,22 @@ class SupabaseService {
   }
 
   Future<String?> uploadImage(dynamic file, String path) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ext = _guessExt(file);
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
     final fullPath = '$path/$fileName';
-    
-    // Supabase upload accepts File (mobile) or Uint8List (web)
-    await _client.storage.from('attachments').upload(fullPath, file);
-    return _client.storage.from('attachments').getPublicUrl(fullPath);
+    await _client.storage.from('expense_attachments').upload(fullPath, file);
+    return _client.storage.from('expense_attachments').getPublicUrl(fullPath);
+  }
+
+  String _guessExt(dynamic file) {
+    // XFile / File both have a `.path` or `.name` property
+    try {
+      final name = (file.name ?? file.path ?? '') as String;
+      final lower = name.toLowerCase();
+      if (lower.endsWith('.pdf')) return 'pdf';
+      if (lower.endsWith('.png')) return 'png';
+    } catch (_) {}
+    return 'jpg';
   }
 
   Future<String?> uploadSignatureBytes(
@@ -80,6 +90,8 @@ class SupabaseService {
     String? bankName,
     String? bankIfsc,
     String? submitterSignatureUrl,
+    String? reportId,
+    String? beneficiaryName,
   }) async {
     await _client.from('invoices').insert({
       'project_name': projectName,
@@ -110,7 +122,13 @@ class SupabaseService {
       if (bankIfsc != null) 'bank_ifsc': bankIfsc,
       if (submitterSignatureUrl != null)
         'submitter_signature_url': submitterSignatureUrl,
-      'data': {'line_items': lineItems, 'attachments': attachmentUrls},
+      if (reportId != null) 'report_id': reportId,
+      'data': {
+        'line_items': lineItems,
+        'attachments': attachmentUrls,
+        if (beneficiaryName != null && beneficiaryName.isNotEmpty)
+          'beneficiary_name': beneficiaryName,
+      },
     });
   }
 
@@ -123,6 +141,15 @@ class SupabaseService {
     final response = await _client.from('invoices').select().eq('id', id).maybeSingle();
     if (response == null) return null;
     return InvoiceModel.fromSupabase(_normalise(response));
+  }
+
+  Future<List<InvoiceModel>> fetchInvoicesByReportId(String reportId) async {
+    final response = await _client
+        .from('invoices')
+        .select()
+        .eq('report_id', reportId)
+        .order('created_at', ascending: false);
+    return (response as List).map((e) => InvoiceModel.fromSupabase(_normalise(e))).toList();
   }
 
   // Normalise snake_case assigned_to values to camelCase for enum matching

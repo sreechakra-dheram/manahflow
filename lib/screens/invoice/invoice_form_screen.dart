@@ -5,17 +5,18 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
+import '../../core/models/master_data_model.dart';
 import '../../core/providers/app_state.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/signature_pad.dart';
 
 const _noteTypes = [
   'Material Purchase',
+  'Miscellaneous / Trips',
   'Service Expense',
   'Equipment Hire',
   'Labour Payment',
   'Subcontractor Bill',
-  'Miscellaneous',
 ];
 
 const _maxAttachmentBytes = 10 * 1024 * 1024; // 10 MB total
@@ -30,9 +31,6 @@ class InvoiceFormScreen extends StatefulWidget {
 class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _projectCtrl = TextEditingController();
-  final _siteCtrl = TextEditingController();
-  final _vendorCtrl = TextEditingController();
   final _invoiceNumberCtrl = TextEditingController();
   final _remarksCtrl = TextEditingController();
   final _bankHolderCtrl = TextEditingController();
@@ -41,9 +39,23 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _bankIfscCtrl = TextEditingController();
 
   String _noteType = _noteTypes.first;
+  String? _selectedProject;
+  String? _selectedVendor;
+  String? _selectedSite;
+  String? _selectedReportId;
+
+  // Misc/Trips: beneficiary
+  bool _tripForSelf = true;
+  final _beneficiaryCtrl = TextEditingController();
+
   DateTime _date = DateTime.now();
   DateTime _dueDate = DateTime.now().add(const Duration(days: 15));
   final List<_LineItemRow> _items = [_LineItemRow()];
+
+  List<ProjectItem> _projects = [];
+  List<VendorItem> _vendors = [];
+  List<SiteItem> _sites = [];
+  List<ExpenseReport> _reports = [];
 
   // Attachments — File + mime hint
   final List<_Attachment> _attachments = [];
@@ -57,17 +69,33 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   void initState() {
     super.initState();
     _invoiceNumberCtrl.text = 'Loading…';
-    context.read<AppState>().getNextInvoiceNumber().then((n) {
+    final appState = context.read<AppState>();
+    appState.getNextInvoiceNumber().then((n) {
       if (mounted) setState(() => _invoiceNumberCtrl.text = n);
+    });
+    _loadMasterData(appState);
+  }
+
+  Future<void> _loadMasterData(AppState appState) async {
+    final results = await Future.wait([
+      appState.getProjects(),
+      appState.getVendors(),
+      appState.getSites(),
+      appState.getExpenseReports(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _projects = results[0] as List<ProjectItem>;
+      _vendors = results[1] as List<VendorItem>;
+      _sites = results[2] as List<SiteItem>;
+      _reports = results[3] as List<ExpenseReport>;
     });
   }
 
   @override
   void dispose() {
-    _projectCtrl.dispose();
-    _siteCtrl.dispose();
-    _vendorCtrl.dispose();
     _invoiceNumberCtrl.dispose();
+    _beneficiaryCtrl.dispose();
     _remarksCtrl.dispose();
     _bankHolderCtrl.dispose();
     _bankAccountCtrl.dispose();
@@ -76,6 +104,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     for (final row in _items) row.dispose();
     super.dispose();
   }
+
+  bool get _isTripsType => _noteType == 'Miscellaneous / Trips';
 
   double get _subtotal =>
       _items.fold(0.0, (s, r) => s + r.amount);
@@ -177,6 +207,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedProject == null) { _snack('Select a project.'); return; }
+    if (_selectedVendor == null) { _snack('Select a vendor.'); return; }
+    if (_selectedSite == null) { _snack('Select a site.'); return; }
     if (_items.every((r) => r.descCtrl.text.trim().isEmpty)) {
       _snack('Add at least one line item.');
       return;
@@ -203,7 +236,6 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         } catch (_) {}
       }
 
-      // Upload signature — use a temp ID prefix; will be keyed on invoice number
       String? sigUrl;
       try {
         sigUrl = await appState.uploadSignatureBytes(
@@ -214,9 +246,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       } catch (_) {}
 
       await appState.submitInvoice(
-        projectName: _projectCtrl.text.trim(),
-        siteName: _siteCtrl.text.trim(),
-        vendorName: _vendorCtrl.text.trim(),
+        projectName: _selectedProject!,
+        siteName: _selectedSite!,
+        vendorName: _selectedVendor!,
         invoiceNumber: _invoiceNumberCtrl.text.trim(),
         date: _fmtDate(_date),
         dueDate: _fmtDate(_dueDate),
@@ -240,6 +272,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         bankName: _bankNameCtrl.text.trim(),
         bankIfsc: _bankIfscCtrl.text.trim(),
         submitterSignatureUrl: sigUrl,
+        reportId: _selectedReportId,
+        beneficiaryName: _isTripsType
+            ? (_tripForSelf
+                ? context.read<AppState>().currentUser?.name
+                : _beneficiaryCtrl.text.trim())
+            : null,
       );
 
       if (mounted) {
@@ -328,22 +366,47 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                             .map((t) => DropdownMenuItem(
                                 value: t, child: Text(t)))
                             .toList(),
-                        onChanged: (v) =>
-                            setState(() => _noteType = v ?? _noteType),
+                        onChanged: (v) => setState(() {
+                          _noteType = v ?? _noteType;
+                          _tripForSelf = true;
+                          _beneficiaryCtrl.clear();
+                        }),
                       ),
+                      // Beneficiary selector for Miscellaneous / Trips
+                      if (_isTripsType) ...[
+                        const SizedBox(height: 16),
+                        _BeneficiarySelector(
+                          isSelf: _tripForSelf,
+                          currentUserName: context.read<AppState>().currentUser?.name ?? '',
+                          beneficiaryCtrl: _beneficiaryCtrl,
+                          onChanged: (v) => setState(() => _tripForSelf = v),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       _twoCol(
                         _field(_invoiceNumberCtrl, 'Ref No.',
                             validator: _required),
-                        _field(_vendorCtrl, 'Vendor / Contractor Name *',
-                            validator: _required),
+                        _dropdownField<String>(
+                          label: 'Vendor / Contractor *',
+                          value: _selectedVendor,
+                          items: _vendors.map((v) => DropdownMenuItem(value: v.name, child: Text(v.name))).toList(),
+                          onChanged: (v) => setState(() => _selectedVendor = v),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _twoCol(
-                        _field(_projectCtrl, 'Project Name *',
-                            validator: _required),
-                        _field(_siteCtrl, 'Site Name *',
-                            validator: _required),
+                        _dropdownField<String>(
+                          label: 'Project *',
+                          value: _selectedProject,
+                          items: _projects.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name))).toList(),
+                          onChanged: (v) => setState(() => _selectedProject = v),
+                        ),
+                        _dropdownField<String>(
+                          label: 'Site *',
+                          value: _selectedSite,
+                          items: _sites.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))).toList(),
+                          onChanged: (v) => setState(() => _selectedSite = v),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _twoCol(
@@ -371,6 +434,18 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                           onTap: () => _pickDate(true),
                         ),
                       ),
+                      if (_reports.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _dropdownField<String>(
+                          label: 'Expense Report (optional)',
+                          value: _selectedReportId,
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('— None —')),
+                            ..._reports.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))),
+                          ],
+                          onChanged: (v) => setState(() => _selectedReportId = v),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -749,6 +824,21 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     });
   }
 
+  Widget _dropdownField<T>({
+    required String label,
+    required T? value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      decoration: InputDecoration(labelText: label),
+      items: items,
+      onChanged: onChanged,
+      isExpanded: true,
+    );
+  }
+
   Widget _field(TextEditingController ctrl, String label,
       {String? Function(String?)? validator, int maxLines = 1}) {
     return TextFormField(
@@ -805,6 +895,114 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
   String _fmt(double v) => v.toStringAsFixed(2).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+}
+
+// ── Beneficiary selector ──────────────────────────────────────────────────────
+
+class _BeneficiarySelector extends StatelessWidget {
+  final bool isSelf;
+  final String currentUserName;
+  final TextEditingController beneficiaryCtrl;
+  final ValueChanged<bool> onChanged;
+
+  const _BeneficiarySelector({
+    required this.isSelf,
+    required this.currentUserName,
+    required this.beneficiaryCtrl,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('This expense is raised for:',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _Chip(
+                label: 'Myself',
+                selected: isSelf,
+                onTap: () => onChanged(true),
+              ),
+              const SizedBox(width: 10),
+              _Chip(
+                label: 'Someone Else',
+                selected: !isSelf,
+                onTap: () => onChanged(false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (isSelf)
+            Row(children: [
+              const Icon(Icons.person_rounded,
+                  size: 16, color: AppColors.accentBlue),
+              const SizedBox(width: 6),
+              Text(currentUserName,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
+            ])
+          else
+            TextFormField(
+              controller: beneficiaryCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Person Name *',
+                prefixIcon: Icon(Icons.person_outline_rounded, size: 18),
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter person name' : null,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _Chip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accentBlue : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppColors.accentBlue
+                : AppColors.borderColor,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Attachment model ─────────────────────────────────────────────────────────

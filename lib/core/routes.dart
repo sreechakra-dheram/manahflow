@@ -1,9 +1,13 @@
 import 'package:go_router/go_router.dart';
+import '../core/models/user_model.dart';
 import '../core/providers/app_state.dart';
+import '../screens/admin/admin_screen.dart';
 import '../screens/approval/approval_workflow_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
+import '../screens/expense_reports/expense_report_detail_screen.dart';
+import '../screens/expense_reports/expense_report_list_screen.dart';
 import '../screens/invoice/invoice_detail_screen.dart';
 import '../screens/invoice/invoice_form_screen.dart';
 import '../screens/invoice/invoice_list_screen.dart';
@@ -20,7 +24,6 @@ GoRouter createRouter(AppState appState) {
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final isLoggedIn = appState.isAuthenticated;
-      // Never redirect away from splash or login during loading
       if (loc == '/') return null;
       if (!isLoggedIn && loc != '/login') return '/login';
       if (isLoggedIn && loc == '/login') return '/dashboard';
@@ -75,8 +78,31 @@ GoRouter createRouter(AppState appState) {
             ),
           ),
           GoRoute(
+            path: '/expense-reports',
+            builder: (context, state) => const ExpenseReportListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ExpenseReportDetailScreen(
+                  reportId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
             path: '/reports',
             builder: (context, state) => const ReportsScreen(),
+          ),
+          GoRoute(
+            path: '/admin',
+            redirect: (context, state) {
+              if (!appState.isAuthenticated ||
+                  appState.currentRole != UserRole.admin) {
+                return '/dashboard';
+              }
+              return null;
+            },
+            builder: (context, state) => const AdminScreen(),
           ),
           GoRoute(
             path: '/profile',

@@ -180,47 +180,54 @@ class _SignatureDialogState extends State<_SignatureDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.of(context).size.width;
+    final isDesktop = screenW > 800;
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 60),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.title,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            SignaturePad(key: _padKey),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, null),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    final state = _padKey.currentState;
-                    if (state == null || !state.hasSignature) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Please draw your signature.')),
-                      );
-                      return;
-                    }
-                    final bytes = await state.toImage();
-                    if (context.mounted) Navigator.pop(context, bytes);
-                  },
-                  child: const Text('Confirm Signature'),
-                ),
-              ],
-            ),
-          ],
+      insetPadding: isDesktop
+          ? const EdgeInsets.symmetric(horizontal: 200, vertical: 80)
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 60),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(widget.title,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              SignaturePad(key: _padKey),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    child: const Text('Cancel',
+                        style: TextStyle(color: AppColors.textSecondary)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final state = _padKey.currentState;
+                      if (state == null || !state.hasSignature) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Please draw your signature.')),
+                        );
+                        return;
+                      }
+                      final bytes = await state.toImage();
+                      if (context.mounted) Navigator.pop(context, bytes);
+                    },
+                    child: const Text('Confirm Signature'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

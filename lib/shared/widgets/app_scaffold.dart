@@ -54,6 +54,12 @@ const _navItems = [
   ),
   _NavItem(
     label: 'Reports',
+    icon: Icons.folder_outlined,
+    activeIcon: Icons.folder_rounded,
+    route: '/expense-reports',
+  ),
+  _NavItem(
+    label: 'Analytics',
     icon: Icons.bar_chart_outlined,
     activeIcon: Icons.bar_chart_rounded,
     route: '/reports',
@@ -66,12 +72,25 @@ const _navItems = [
   ),
 ];
 
-int _navIndex(String location) {
+const _adminNavItem = _NavItem(
+  label: 'Admin',
+  icon: Icons.admin_panel_settings_outlined,
+  activeIcon: Icons.admin_panel_settings_rounded,
+  route: '/admin',
+);
+
+List<_NavItem> _visibleNavItems(bool isAdmin) =>
+    isAdmin ? [..._navItems, _adminNavItem] : _navItems;
+
+int _navIndex(String location, bool isAdmin) {
+  final items = _visibleNavItems(isAdmin);
   if (location.startsWith('/invoices') ||
       location.startsWith('/scan') ||
       location.startsWith('/approval')) return 1;
-  if (location.startsWith('/reports')) return 2;
-  if (location.startsWith('/profile')) return 3;
+  if (location.startsWith('/expense-reports')) return 2;
+  if (location.startsWith('/reports')) return 3;
+  if (location.startsWith('/admin')) return isAdmin ? items.length - 2 : 0;
+  if (location.startsWith('/profile')) return items.length - 1;
   return 0;
 }
 
@@ -85,8 +104,10 @@ class _WidescreenLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    final selectedIndex = _navIndex(location);
     final user = context.watch<AppState>().currentUser;
+    final isAdmin = user?.isAdmin ?? false;
+    final navItems = _visibleNavItems(isAdmin);
+    final selectedIndex = _navIndex(location, isAdmin);
 
     return Scaffold(
       body: Row(
@@ -121,7 +142,7 @@ class _WidescreenLayout extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'BuildFlow',
+                              'ManahFlow',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -144,8 +165,8 @@ class _WidescreenLayout extends StatelessWidget {
                 const Divider(color: Colors.white12, height: 1),
                 const SizedBox(height: 12),
                 // Nav items
-                ...List.generate(_navItems.length, (i) {
-                  final item = _navItems[i];
+                ...List.generate(navItems.length, (i) {
+                  final item = navItems[i];
                   final isActive = i == selectedIndex;
                   return _SidebarItem(
                     item: item,
@@ -321,7 +342,10 @@ class _TopBar extends StatelessWidget {
     if (location.startsWith('/scan/review')) return 'Review Extracted Data';
     if (location.startsWith('/scan')) return 'Scan Expense';
     if (location.startsWith('/approval')) return 'Approval Workflow';
-    if (location.startsWith('/reports')) return 'Reports & Analytics';
+    if (location.startsWith('/expense-reports') && location.length > 17) return 'Report Detail';
+    if (location.startsWith('/expense-reports')) return 'Expense Reports';
+    if (location.startsWith('/reports')) return 'Analytics';
+    if (location.startsWith('/admin')) return 'Admin — Master Data';
     if (location.startsWith('/profile')) return 'Profile & Settings';
     return 'Dashboard';
   }
@@ -337,9 +361,10 @@ class _MobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    final selectedIndex = _navIndex(location);
-
     final user = context.watch<AppState>().currentUser;
+    final isAdmin = user?.isAdmin ?? false;
+    final navItems = _visibleNavItems(isAdmin);
+    final selectedIndex = _navIndex(location, isAdmin);
 
     return Scaffold(
       appBar: AppBar(
@@ -377,12 +402,12 @@ class _MobileLayout extends StatelessWidget {
       ),
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (i) => context.go(_navItems[i].route),
+        selectedIndex: selectedIndex.clamp(0, navItems.length - 1),
+        onDestinationSelected: (i) => context.go(navItems[i].route),
         backgroundColor: AppColors.cardWhite,
         indicatorColor: AppColors.accentBlue.withOpacity(0.15),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: _navItems
+        destinations: navItems
             .map(
               (item) => NavigationDestination(
                 icon: Icon(item.icon),

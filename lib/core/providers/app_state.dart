@@ -5,13 +5,16 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/user_model.dart';
 import '../../core/models/invoice_model.dart' show InvoiceModel, InvoiceStatus, CommentItem;
+import '../../core/models/master_data_model.dart';
 import '../../core/models/notification_model.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/master_data_service.dart';
 import '../../core/services/supabase_service.dart';
 
 class AppState extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final SupabaseService _supabaseService = SupabaseService();
+  final MasterDataService _masterDataService = MasterDataService();
   UserModel? _currentUser;
   bool _isLoading = false;
 
@@ -234,6 +237,8 @@ class AppState extends ChangeNotifier {
     String? bankName,
     String? bankIfsc,
     String? submitterSignatureUrl,
+    String? reportId,
+    String? beneficiaryName,
   }) async {
     if (_currentUser == null) return;
 
@@ -289,6 +294,8 @@ class AppState extends ChangeNotifier {
       bankName: bankName,
       bankIfsc: bankIfsc,
       submitterSignatureUrl: submitterSignatureUrl,
+      reportId: reportId,
+      beneficiaryName: beneficiaryName,
     );
   }
 
@@ -378,8 +385,43 @@ class AppState extends ChangeNotifier {
     return 'User';
   }
 
+  // ── Master Data ───────────────────────────────────────────────────────────
+
+  Future<List<ProjectItem>> getProjects() => _masterDataService.fetchProjects();
+  Future<List<VendorItem>> getVendors() => _masterDataService.fetchVendors();
+  Future<List<SiteItem>> getSites() => _masterDataService.fetchSites();
+
+  Future<void> addProject(String name, {String? code}) => _masterDataService.addProject(name, code: code);
+  Future<void> updateProject(String id, String name, {String? code}) => _masterDataService.updateProject(id, name, code: code);
+  Future<void> deleteProject(String id) => _masterDataService.deleteProject(id);
+
+  Future<void> addVendor(String name, {String? contact}) => _masterDataService.addVendor(name, contact: contact);
+  Future<void> updateVendor(String id, String name, {String? contact}) => _masterDataService.updateVendor(id, name, contact: contact);
+  Future<void> deleteVendor(String id) => _masterDataService.deleteVendor(id);
+
+  Future<void> addSite(String name, {String? projectId}) => _masterDataService.addSite(name, projectId: projectId);
+  Future<void> updateSite(String id, String name, {String? projectId}) => _masterDataService.updateSite(id, name, projectId: projectId);
+  Future<void> deleteSite(String id) => _masterDataService.deleteSite(id);
+
+  // ── Expense Reports ───────────────────────────────────────────────────────
+
+  Future<List<ExpenseReport>> getExpenseReports() => _masterDataService.fetchExpenseReports();
+  Future<ExpenseReport?> getExpenseReportById(String id) => _masterDataService.fetchExpenseReportById(id);
+
+  Future<void> addExpenseReport(String name, {String? description}) =>
+      _masterDataService.addExpenseReport(name, _currentUser!.id, _currentUser!.name, description: description);
+
+  Future<void> updateExpenseReport(String id, String name, {String? description, String? status}) =>
+      _masterDataService.updateExpenseReport(id, name, description: description, status: status);
+
+  Future<void> deleteExpenseReport(String id) => _masterDataService.deleteExpenseReport(id);
+
+  Future<List<InvoiceModel>> getInvoicesByReport(String reportId) =>
+      _supabaseService.fetchInvoicesByReportId(reportId);
+
   UserRole _mapStringToRole(String roleStr) {
     final s = roleStr.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    if (s.contains('admin')) return UserRole.admin;
     if (s.contains('projectmanager') || s.contains('pm')) return UserRole.projectManager;
     if (s.contains('finance') || s.contains('accounts')) return UserRole.finance;
     if (s.contains('siteengineer') || s.contains('engineer')) return UserRole.siteEngineer;

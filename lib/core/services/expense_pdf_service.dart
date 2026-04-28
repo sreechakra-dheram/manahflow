@@ -98,21 +98,40 @@ class ExpensePdfService {
           // ── Letter body ──────────────────────────────────────
           pw.Text('Dear Sir,', style: baseStyle),
           pw.SizedBox(height: 6),
-          pw.Text(
-            'Subject: Payment Required - Material Purchase from ${inv.vendorName}',
-            style: boldStyle,
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            'Please approve the payment of Rs ${_fmt(inv.subtotal)}/- towards '
-            'Purchase of products from ${inv.vendorName.toUpperCase()}. '
-            'The material has been received as per the requirement, and the '
-            'vendor invoice has been verified. Kindly process the payment at '
-            'the earliest to ensure smooth continuation of project activities.',
-            style: baseStyle,
-          ),
+          if (_isTrips(inv.noteType)) ...[
+            pw.Text(
+              'Subject: Travel & Site Visit Expense Reimbursement - ${inv.projectName}',
+              style: boldStyle,
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Please approve the reimbursement of Rs ${_fmt(inv.subtotal)}/- towards '
+              'site visit and travel expenses incurred by ${inv.beneficiaryName ?? inv.submittedByName} '
+              'for ${inv.projectName}. '
+              'The field visits were conducted as part of project activities and all '
+              'travel expenses have been properly documented with supporting bills. '
+              'Kindly process the reimbursement at the earliest.',
+              style: baseStyle,
+            ),
+          ] else ...[
+            pw.Text(
+              'Subject: Payment Required - ${inv.noteType ?? 'Material Purchase'} from ${inv.vendorName}',
+              style: boldStyle,
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('Project Code: ${inv.projectName}', style: baseStyle),
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Please approve the payment of Rs ${_fmt(inv.subtotal)}/- towards '
+              'Purchase of products from ${inv.vendorName.toUpperCase()}. '
+              'The material has been received as per the requirement, and the '
+              'vendor invoice has been verified. Kindly process the payment at '
+              'the earliest to ensure smooth continuation of project activities.',
+              style: baseStyle,
+            ),
+          ],
 
           pw.SizedBox(height: 14),
 
@@ -249,6 +268,12 @@ class ExpensePdfService {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  static bool _isTrips(String? noteType) {
+    if (noteType == null) return false;
+    final n = noteType.toLowerCase();
+    return n.contains('trip') || n.contains('travel') || n.contains('miscellaneous');
+  }
 
   static bool _hasBankDetails(InvoiceModel inv) =>
       (inv.bankAccountHolder?.isNotEmpty ?? false) ||

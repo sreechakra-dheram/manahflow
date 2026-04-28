@@ -1,4 +1,4 @@
-enum UserRole { siteEngineer, projectManager, finance }
+enum UserRole { siteEngineer, projectManager, finance, admin }
 
 class UserModel {
   final String id;
@@ -46,9 +46,12 @@ class UserModel {
         return 'Project Manager';
       case UserRole.finance:
         return 'Finance';
+      case UserRole.admin:
+        return 'Admin';
     }
   }
 
+  bool get isAdmin => role == UserRole.admin;
   bool get canApproveInvoice => role == UserRole.projectManager || role == UserRole.finance;
 }
 
